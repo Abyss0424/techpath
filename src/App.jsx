@@ -208,7 +208,7 @@ export default function App() {
   // Determina la pantalla inicial
   const [screen, setScreen] = useState(() => {
     if (!localStorage.getItem("tp_groq_key")) return "apikey";
-    return "mainmenu"; // Por defecto al menú principal si hay key
+    return "mainmenu"; 
   });
 
   // ── ESTADOS DEL CHAT ACTUAL ──
@@ -302,7 +302,7 @@ export default function App() {
 
   // ── FUNCIÓN: Eliminar un chat ──
   const deleteChat = useCallback((chatId, e) => {
-    e.stopPropagation(); // Evita abrir el chat al hacer clic en borrar
+    e.stopPropagation(); 
     if (window.confirm("¿Estás seguro de que quieres eliminar esta ruta para siempre?")) {
       setSavedChats(prev => prev.filter(c => c.id !== chatId));
       if (currentChatId === chatId) {
@@ -312,63 +312,112 @@ export default function App() {
     }
   }, [currentChatId]);
 
-  const send = useCallback(async () => {
-  const text = input.trim(); // Este 'text' es lo que el usuario acaba de escribir
-  if (!text || loading) return;
-  setInput("");
-  setError("");
-  const next = [...messages, { role: "user", content: text }];
-  setMessages(next);
-  setLoading(true);
-  scrollBottom();
-
-  // Actualizar temporalmente el chat en la lista con el mensaje del usuario
-  setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: next } : c));
-
-  try {
-    const reply = await geminiCall(next, getSystemPrompt(goalText));
-    const finalMessages = [...next, { role: "assistant", content: reply }];
+  // ── FUNCIÓN: Iniciar nueva ruta ──
+  const startArea = useCallback(async (selectedArea, customText = "") => {
+    const goal = customText || selectedArea.goal;
     
-    // --- NUEVA LÓGICA DE VALIDACIÓN ---
-    let newMentorName = mentorName;
-    let newGoalText = goalText;
+    const newChatId = Date.now().toString();
+    const newChatObject = {
+      id: newChatId,
+      area: selectedArea,
+      ac: selectedArea.color,
+      goalText: goal,
+      mentorName: "TechPathAI",
+      messages: [],
+      createdAt: new Date().toISOString()
+    };
 
-    // Si el mentor sigue siendo el genérico (TechPathAI), 
-    // intentamos ver si la IA ya aceptó el objetivo en esta respuesta.
-    if (mentorName === "TechPathAI") {
-      const match = reply.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
-      if (match) {
-        newMentorName = match[1]; // Ejemplo: "WebMentor"
-        newGoalText = text;      // El objetivo real es lo que el usuario escribió (text)
-        setMentorName(newMentorName);
-        setGoalText(newGoalText);
-      }
+    setError("");
+    setLoading(true);
+    setArea(selectedArea);
+    setAc(selectedArea.color);
+    setGoalText(goal);
+    setMessages([]);
+    setMentorName("TechPathAI");
+    setCurrentChatId(newChatId);
+    setScreen("chat");
+
+    try {
+      const firstMsg = await geminiCall(
+        [{ role: "user", content: goal }],
+        getSystemPrompt(goal)
+      );
+
+      const match = firstMsg.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
+      const finalMentorName = match ? match[1] : "TechPathAI";
+      
+      setMentorName(finalMentorName);
+      const initialMessages = [{ role: "assistant", content: firstMsg }];
+      setMessages(initialMessages);
+
+      setSavedChats(prev => [
+        { ...newChatObject, mentorName: finalMentorName, messages: initialMessages },
+        ...prev
+      ]);
+
+    } catch (e) {
+      setError(e.message);
+      const errorMsg = [{ role: "assistant", content: `⚠️ Error: ${e.message}` }];
+      setMessages(errorMsg);
+      setSavedChats(prev => [{ ...newChatObject, messages: errorMsg }, ...prev]);
+    } finally {
+      setLoading(false);
+      scrollBottom();
     }
-    // ----------------------------------
+  }, []);
 
-    setMessages(finalMessages);
-    
-    // Guardar TODO actualizado en el slot de localStorage
-    setSavedChats(prev => prev.map(c => c.id === currentChatId ? { 
-      ...c, 
-      messages: finalMessages,
-      mentorName: newMentorName, // Guardamos el nombre validado
-      goalText: newGoalText      // Guardamos el objetivo real validado
-    } : c));
-
-  } catch (e) {
-    setError(e.message);
-    const finalMessages = [...next, { role: "assistant", content: `⚠️ ${e.message}` }];
-    setMessages(finalMessages);
-    setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: finalMessages } : c));
-  } finally {
-    setLoading(false);
+  // ── FUNCIÓN: Enviar mensaje ──
+  const send = useCallback(async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput("");
+    setError("");
+    const next = [...messages, { role: "user", content: text }];
+    setMessages(next);
+    setLoading(true);
     scrollBottom();
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }
-}, [input, loading, messages, goalText, currentChatId, mentorName]); // Agregué mentorName a las dependencias
 
-  // ── NUEVA PANTALLA: API KEY ───────────────────────────────────────────────
+    setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: next } : c));
+
+    try {
+      const reply = await geminiCall(next, getSystemPrompt(goalText));
+      const finalMessages = [...next, { role: "assistant", content: reply }];
+      
+      let newMentorName = mentorName;
+      let newGoalText = goalText;
+
+      if (mentorName === "TechPathAI") {
+        const match = reply.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
+        if (match) {
+          newMentorName = match[1];
+          newGoalText = text; 
+          setMentorName(newMentorName);
+          setGoalText(newGoalText);
+        }
+      }
+
+      setMessages(finalMessages);
+      
+      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { 
+        ...c, 
+        messages: finalMessages,
+        mentorName: newMentorName,
+        goalText: newGoalText
+      } : c));
+
+    } catch (e) {
+      setError(e.message);
+      const finalMessages = [...next, { role: "assistant", content: `⚠️ ${e.message}` }];
+      setMessages(finalMessages);
+      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: finalMessages } : c));
+    } finally {
+      setLoading(false);
+      scrollBottom();
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [input, loading, messages, goalText, currentChatId, mentorName]);
+
+  // ── PANTALLA: API KEY ──
   if (screen === "apikey") return (
     <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <style>{CSS}</style>
@@ -391,86 +440,45 @@ export default function App() {
           <button onClick={saveKey} disabled={!keyInput.trim() || keyLoading} style={{ padding: "13px", borderRadius: 11, border: "none", background: !keyInput.trim() || keyLoading ? "rgba(255,255,255,.05)" : "linear-gradient(135deg,#00dc78,#00aa55)", color: !keyInput.trim() || keyLoading ? "rgba(255,255,255,.2)" : "#030a06", cursor: !keyInput.trim() || keyLoading ? "default" : "pointer", fontSize: 14, fontWeight: 700, fontFamily: "monospace", transition: "all .2s" }}>
             {keyLoading ? "Verificando..." : "Acceder →"}
           </button>
-          <div style={{ borderTop: "1px solid rgba(255,255,255,.06)", paddingTop: 14 }}>
-            <p style={{ fontSize: 12, color: "rgba(255,255,255,.22)", margin: 0, lineHeight: 1.7 }}>¿No tienes key? Crea una gratis en <a href="https://console.groq.com" target="_blank" rel="noreferrer" style={{ color: "#00dc78", textDecoration: "none" }}>console.groq.com</a></p>
-          </div>
         </div>
       </div>
     </div>
   );
 
-  // ── MODIFICACIÓN 2: INTERFAZ DE MENÚ PRINCIPAL ─────────────────────────────
+  // ── PANTALLA: MENÚ PRINCIPAL ──
   if (screen === "mainmenu") return (
     <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column" }}>
       <style>{CSS}</style>
       <header style={{ width: "100%", padding: "15px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: 20, color: "#00dc78" }}>⬡</span>
         <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "#00dc78", letterSpacing: 1 }}>TechPath</span>
-        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginLeft: 2 }}>AI Career Mentor</span>
       </header>
-
       <div style={{ width: "100%", maxWidth: 800, margin: "0 auto", padding: "40px 20px 60px", display: "flex", flexDirection: "column", gap: 35 }}>
-        
-        {/* Saludo y Pregunta */}
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 10 }}>
-          <h1 style={{ fontSize: "clamp(24px,6vw,36px)", fontWeight: 800, fontFamily: "monospace", color: "#fff", margin: 0 }}>
-            ¿Qué quieres hacer hoy?
-          </h1>
-          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", margin: 0 }}>
-            Continúa una ruta existente o empieza una nueva aventura técnica.
-          </p>
+          <h1 style={{ fontSize: "clamp(24px,6vw,36px)", fontWeight: 800, fontFamily: "monospace", color: "#fff", margin: 0 }}>¿Qué quieres hacer hoy?</h1>
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", margin: 0 }}>Continúa una ruta existente o empieza una nueva aventura técnica.</p>
         </div>
-
-        {/* Sección de Slots (Guardados) */}
         <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 10, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
             <h2 style={{ fontSize: 11, fontFamily: "monospace", color: "rgba(255,255,255,.3)", letterSpacing: 2, fontWeight: 700, margin: 0 }}>TUS HOJAS DE RUTA</h2>
-            <span style={{ fontSize: 11, color: savedChats.length >= 3 ? "#ff8080" : "rgba(255,255,255,.2)", fontWeight: 600, fontFamily: "monospace" }}>
-              {savedChats.length} / 3 slots usados
-            </span>
+            <span style={{ fontSize: 11, color: savedChats.length >= 3 ? "#ff8080" : "rgba(255,255,255,.2)", fontWeight: 600, fontFamily: "monospace" }}>{savedChats.length} / 3 slots usados</span>
           </div>
-
-          {/* Lista de Chats (Slots) */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(230px,1fr))", gap: 15 }}>
-            
             {savedChats.map((chat) => (
-              <div key={chat.id} 
-                onClick={() => loadChat(chat.id)}
-                style={{ background: "rgba(255,255,255,.02)", border: `1px solid rgba(${chat.ac},.12)`, borderRadius: 16, padding: "20px", display: "flex", flexDirecton: "column", gap: 12, cursor: "pointer", transition: "all .2s", position: "relative" }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = `rgba(${chat.ac},.4)`; e.currentTarget.style.background = `rgba(${chat.ac},.05)`; e.currentTarget.style.transform = "translateY(-2px)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = `rgba(${chat.ac},.12)`; e.currentTarget.style.background = "rgba(255,255,255,.02)"; e.currentTarget.style.transform = "translateY(0)"; }}
-              >
-                {/* Cabecera del Slot */}
+              <div key={chat.id} onClick={() => loadChat(chat.id)} style={{ background: "rgba(255,255,255,.02)", border: `1px solid rgba(${chat.ac},.12)`, borderRadius: 16, padding: "20px", display: "flex", flexDirecton: "column", gap: 12, cursor: "pointer", transition: "all .2s", position: "relative" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 24 }}>{chat.area.icon}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>{chat.mentorName}</div>
                     <div style={{ fontSize: 11, color: `rgb(${chat.ac})`, fontFamily: "monospace" }}>{chat.area.label}</div>
                   </div>
-                  {/* Botón Eliminar (Modificación 1) */}
-                  <button onClick={(e) => deleteChat(chat.id, e)} style={{ background: "none", border: "none", color: "rgba(255,80,80,.4)", cursor: "pointer", fontSize: 14, padding: 5, borderRadius: 5 }} title="Eliminar ruta">✕</button>
+                  <button onClick={(e) => deleteChat(chat.id, e)} style={{ background: "none", border: "none", color: "rgba(255,80,80,.4)", cursor: "pointer", fontSize: 14, padding: 5 }}>✕</button>
                 </div>
-                
-                {/* Objetivo Truncado */}
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,.4)", lineHeight: 1.5, margin: "5px 0 0", fontStyle: "italic", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                  "{chat.goalText}"
-                </p>
-
-                {/* Info adicional */}
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", fontFamily: "monospace", marginTop: "auto", borderTop: "1px solid rgba(255,255,255,.05)", paddingTop: 8 }}>
-                  Actualizado: {new Date(chat.createdAt).toLocaleDateString()}
-                </div>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,.4)", lineHeight: 1.5, margin: "5px 0 0", fontStyle: "italic", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>"{chat.goalText}"</p>
               </div>
             ))}
-
-            {/* Slot Vacío / Botón Nueva Ruta */}
             {savedChats.length < 3 && (
-              <button 
-                onClick={createNewChat}
-                style={{ background: "transparent", border: "2px dashed rgba(255,255,255,.07)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "rgba(255,255,255,.2)", cursor: "pointer", minHeight: 140, transition: "all .2s" }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(0,220,120,.2)"; e.currentTarget.style.color = "#00dc78"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,.07)"; e.currentTarget.style.color = "rgba(255,255,255,.2)"; }}
-              >
+              <button onClick={createNewChat} style={{ background: "transparent", border: "2px dashed rgba(255,255,255,.07)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "rgba(255,255,255,.2)", cursor: "pointer", minHeight: 140 }}>
                 <span style={{ fontSize: 26 }}>⊕</span>
                 <span style={{ fontSize: 12, fontWeight: 600, fontFamily: "monospace" }}>Nueva Ruta</span>
               </button>
@@ -481,34 +489,31 @@ export default function App() {
     </div>
   );
 
-  // ── WELCOME SCREEN (Modificada con botón volver) ───────────────────────────
+  // ── PANTALLA: BIENVENIDA / CREAR ──
   if (screen === "welcome") return (
     <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <style>{CSS}</style>
       <header style={{ width: "100%", padding: "15px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 10 }}>
-        {/* Modificación 1: Botón Volver */}
-        <button onClick={() => setScreen("mainmenu")} style={{ background: "none", border: "none", color: "rgba(255,255,255,.3)", cursor: "pointer", fontSize: 16, marginRight: 5 }}>←</button>
+        <button onClick={() => setScreen("mainmenu")} style={{ background: "none", border: "none", color: "rgba(255,255,255,.3)", cursor: "pointer", fontSize: 16 }}>←</button>
         <span style={{ fontSize: 20, color: "#00dc78" }}>⬡</span>
         <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "#00dc78", letterSpacing: 1 }}>TechPath</span>
       </header>
       <div style={{ width: "100%", maxWidth: 660, padding: "34px 18px 60px", display: "flex", flexDirection: "column", gap: 26 }}>
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 38, lineHeight: 1 }} className="tp-float">🎯</div>
-          <h1 style={{ fontSize: "clamp(20px,5vw,30px)", fontWeight: 800, fontFamily: "monospace", color: "#fff", margin: 0, lineHeight: 1.25 }}>Crear nueva ruta</h1>
+          <div style={{ fontSize: 38 }} className="tp-float">🎯</div>
+          <h1 style={{ fontSize: "clamp(20px,5vw,30px)", fontWeight: 800, fontFamily: "monospace", color: "#fff", margin: 0 }}>Crear nueva ruta</h1>
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", margin: "0 auto", lineHeight: 1.65, maxWidth: 440 }}>Describe tu objetivo técnico. Te asignaré un mentor con hoja de ruta completa.</p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <textarea rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "13px 15px", color: "#e8f4ec", fontSize: 14, fontFamily: "'Outfit',sans-serif", resize: "none", outline: "none", lineHeight: 1.6, boxSizing: "border-box" }} value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} placeholder="Ej: Quiero ser pentester y aprender hacking ético..." />
-          <button onClick={() => startArea({ key: "custom", icon: "🎯", label: "Personalizado", color: "0,220,120" }, customGoal.trim())} disabled={!customGoal.trim()} style={{ padding: "13px", borderRadius: 12, border: "none", background: customGoal.trim() ? "linear-gradient(135deg,#00dc78,#00aa55)" : "rgba(255,255,255,0.05)", color: customGoal.trim() ? "#030a06" : "rgba(255,255,255,.2)", cursor: customGoal.trim() ? "pointer" : "default", fontSize: 14, fontWeight: 700, fontFamily: "monospace", transition: "all .2s" }}>
-            Crear mi ruta →
-          </button>
+          <textarea rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "13px 15px", color: "#e8f4ec", fontSize: 14, outline: "none", resize: "none" }} value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} placeholder="Ej: Quiero ser pentester y aprender hacking ético..." />
+          <button onClick={() => startArea({ key: "custom", icon: "🎯", label: "Personalizado", color: "0,220,120" }, customGoal.trim())} disabled={!customGoal.trim()} style={{ padding: "13px", borderRadius: 12, border: "none", background: customGoal.trim() ? "linear-gradient(135deg,#00dc78,#00aa55)" : "rgba(255,255,255,0.05)", color: customGoal.trim() ? "#030a06" : "rgba(255,255,255,.2)", cursor: "pointer", fontWeight: 700, fontFamily: "monospace" }}>Crear mi ruta →</button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} /><span style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", fontFamily: "monospace" }}>O ELIGE UN ÁREA</span><div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} /></div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 9 }}>
           {AREAS.map((a) => (
-            <button key={a.key} onClick={() => startArea(a)} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 12px", borderRadius: 13, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", cursor: "pointer", textAlign: "left", color: "inherit", fontFamily: "'Outfit',sans-serif", transition: "all .18s" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = `rgba(${a.color},.4)`; e.currentTarget.style.background = `rgba(${a.color},.06)`; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+            <button key={a.key} onClick={() => startArea(a)} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 12px", borderRadius: 13, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", cursor: "pointer", color: "inherit" }}>
               <span style={{ fontSize: 24 }}>{a.icon}</span>
-              <div><div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.75)", lineHeight: 1.3 }}>{a.label}</div><div style={{ fontSize: 10, color: `rgba(${a.color},.7)`, marginTop: 3, fontFamily: "monospace" }}>Crear →</div></div>
+              <div><div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>{a.label}</div><div style={{ fontSize: 10, color: `rgba(${a.color},.7)`, marginTop: 3, fontFamily: "monospace" }}>Crear →</div></div>
             </button>
           ))}
         </div>
@@ -516,44 +521,38 @@ export default function App() {
     </div>
   );
 
-  // ── CHAT SCREEN ───────────────────────────────────────────────────────────
-return (
+  // ── PANTALLA: CHAT ──
+  return (
     <div style={{ height: "100vh", background: "#030a06", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
       <style>{CSS}</style>
 
       {sideOpen && <div onClick={() => setSideOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", zIndex: 40, backdropFilter: "blur(3px)" }} />}
 
-      {/* Sidebar */}
       <aside style={{ position: "fixed", top: 0, left: 0, bottom: 0, width: 230, background: "#040e07", borderRight: `1px solid rgba(${ac},.13)`, display: "flex", flexDirection: "column", zIndex: 50, transition: "transform .27s cubic-bezier(.4,0,.2,1)", transform: sideOpen ? "translateX(0)" : "translateX(-100%)", overflowY: "auto" }}>
         
-        {/* Cabecera del Sidebar */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "15px 14px 13px", borderBottom: `1px solid rgba(${ac},.08)` }}>
           <span style={{ fontSize: 18, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
           <span style={{ flex: 1, fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1 }}>{mentorName}</span>
-          <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.22)", fontSize: 15, cursor: "pointer", padding: 4 }}>✕</button>
+          <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.22)", fontSize: 15 }}>✕</button>
         </div>
 
-        {/* Botón Menú Principal */}
         <div style={{ padding: "12px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
           <button onClick={() => setScreen("mainmenu")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,.05)", background: "rgba(255,255,255,.03)", color: "rgba(255,255,255,.7)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
             <span>🧭</span> Menú Principal
           </button>
         </div>
 
-        {/* Hoja de Ruta */}
         <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
           <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>HOJA DE RUTA</div>
           {DEFAULT_PHASES.map((ph, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, marginBottom: 3, border: `1px solid ${i === 0 ? `rgba(${ac},.2)` : "transparent"}`, background: i === 0 ? `rgba(${ac},.05)` : "transparent" }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? `rgb(${ac})` : `rgba(${ac},.12)`, flexShrink: 0, boxShadow: i === 0 ? `0 0 6px rgb(${ac})` : "none" }} />
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? `rgb(${ac})` : `rgba(${ac},.12)`, flexShrink: 0 }} />
               <span style={{ fontSize: 12, color: i === 0 ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.14)", flex: 1, fontWeight: i === 0 ? 600 : 400 }}>{ph}</span>
-              {i > 0 && <span style={{ fontSize: 11, opacity: .22 }}>🔒</span>}
-              {i === 0 && <span style={{ fontSize: 11, color: `rgb(${ac})` }}>→</span>}
+              {i > 0 && <span>🔒</span>}
             </div>
           ))}
         </div>
 
-        {/* Progreso */}
         <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
           <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 9 }}>PROGRESO</div>
           {[["Paths completados", "0", `rgb(${ac})`], ["En curso", "0", "#ffa502"], ["Certificaciones", "0 🏆", "#7ee8fa"]].map(([l, v, c]) => (
@@ -564,11 +563,8 @@ return (
           ))}
         </div>
 
-        {/* Tu Objetivo Principal (Lógica de Validación) */}
         <div style={{ padding: "13px 14px" }}>
-          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>
-            TU OBJETIVO PRINCIPAL
-          </div>
+          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>TU OBJETIVO PRINCIPAL</div>
           <p style={{ 
             fontSize: 11, 
             color: mentorName === "TechPathAI" ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.28)", 
@@ -582,88 +578,55 @@ return (
         </div>
       </aside>
 
-      {/* Header del Chat */}
       <header style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderBottom: `1px solid rgba(${ac},.1)`, background: "rgba(3,10,6,.97)", flexShrink: 0, zIndex: 10 }}>
-        <button onClick={() => setSideOpen((v) => !v)} aria-label="Menú" style={{ background: "none", border: "none", cursor: "pointer", padding: "5px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
-          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
-          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
+        <button onClick={() => setSideOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", padding: "5px", display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})` }} />
+          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})` }} />
+          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})` }} />
         </button>
         <span style={{ fontSize: 16, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
         <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1, flex: 1 }}>{mentorName}</span>
         <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>ETAPA 1</span>
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})`, boxShadow: `0 0 7px ${loading ? "#ffa502" : `rgb(${ac})`}`, display: "inline-block", transition: "all .3s" }} />
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})` }} />
       </header>
 
-      {/* Mensajes */}
       <div style={{ flex: 1, overflow: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 13 }}>
         {loading && messages.length === 0 && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 16, opacity: .7, marginTop: "20%" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, opacity: .7, marginTop: "20%" }}>
             <div style={{ fontSize: 32, color: `rgb(${ac})`, animation: "tp-pulse 1.5s infinite" }}>⬡</div>
             <div style={{ fontSize: 13, fontFamily: "monospace", color: `rgb(${ac})` }}>Preparando tu mentor...</div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {[0, .2, .4].map((d, i) => (<span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />))}
-            </div>
           </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className="tp-msg" style={{ display: "flex", gap: 8, justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-start" }}>
-            {m.role === "assistant" && (
-              <div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0, marginTop: 2 }}>{area?.icon || "⬡"}</div>
-            )}
-            <div style={m.role === "user" ? { maxWidth: "76%", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", borderRadius: "12px 3px 12px 12px", padding: "10px 13px", fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,.78)" } : { maxWidth: "88%", background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "12px 14px" }}>
+          <div key={i} className="tp-msg" style={{ display: "flex", gap: 8, justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+            {m.role === "assistant" && <div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0 }}>{area?.icon || "⬡"}</div>}
+            <div style={m.role === "user" ? { maxWidth: "76%", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", borderRadius: "12px 3px 12px 12px", padding: "10px 13px", fontSize: 13, color: "rgba(255,255,255,.78)" } : { maxWidth: "88%", background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "12px 14px" }}>
               {m.role === "user" ? m.content : <MD text={m.content} ac={ac} />}
             </div>
-            {m.role === "user" && (
-              <div style={{ width: 27, height: 27, borderRadius: 7, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,.45)", flexShrink: 0, marginTop: 2 }}>U</div>
-            )}
           </div>
         ))}
-        {loading && messages.length > 0 && (
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0 }}>{area?.icon || "⬡"}</div>
-            <div style={{ background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "13px 16px", display: "flex", gap: 5, alignItems: "center" }}>
-              {[0, .2, .4].map((d, i) => (<span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />))}
-            </div>
-          </div>
-        )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Banner de error */}
-      {error && (
-        <div style={{ padding: "9px 15px", background: "rgba(255,80,80,.08)", borderTop: "1px solid rgba(255,80,80,.2)", fontSize: 12, color: "#ff8080", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <span>⚠️ {error}</span>
-          <button onClick={() => setError("")} style={{ background: "none", border: "none", color: "rgba(255,80,80,.5)", cursor: "pointer", fontSize: 14 }}>✕</button>
-        </div>
-      )}
+      {error && <div style={{ padding: "9px 15px", background: "rgba(255,80,80,.08)", borderTop: "1px solid rgba(255,80,80,.2)", fontSize: 12, color: "#ff8080" }}>⚠️ {error}</div>}
 
-      {/* Input */}
-      <div style={{ padding: "11px 14px 13px", borderTop: `1px solid rgba(${ac},.08)`, background: "rgba(3,10,6,.98)", flexShrink: 0 }}>
+      <div style={{ padding: "11px 14px 13px", borderTop: `1px solid rgba(${ac},.08)`, background: "rgba(3,10,6,.98)" }}>
         <div style={{ display: "flex", gap: 8 }}>
-          <textarea ref={inputRef} rows={1} style={{ flex: 1, background: "rgba(4,16,8,.95)", border: `1px solid rgba(${ac},.14)`, borderRadius: 10, padding: "11px 13px", color: "#c8dfd4", fontSize: 13, fontFamily: "'Outfit',sans-serif", outline: "none", caretColor: `rgb(${ac})`, minWidth: 0, resize: "none", minHeight: "42px", maxHeight: "120px", overflowY: "auto", lineHeight: 1.5 }} value={input} onChange={(e) => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); e.target.style.height = "auto"; } }} placeholder={loading ? "El mentor está respondiendo..." : "Escribe tu respuesta..."} disabled={loading} />
-          <button onClick={send} disabled={loading || !input.trim()} style={{ padding: "11px 15px", borderRadius: 10, border: `1px solid rgba(${ac},.25)`, background: `rgba(${ac},.09)`, color: `rgb(${ac})`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "monospace", flexShrink: 0, opacity: loading || !input.trim() ? .3 : 1, transition: "opacity .2s" }}>▶</button>
+          <textarea ref={inputRef} rows={1} style={{ flex: 1, background: "rgba(4,16,8,.95)", border: `1px solid rgba(${ac},.14)`, borderRadius: 10, padding: "11px 13px", color: "#c8dfd4", outline: "none", resize: "none" }} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder={loading ? "Esperando..." : "Escribe..."} disabled={loading} />
+          <button onClick={send} disabled={loading || !input.trim()} style={{ padding: "11px 15px", borderRadius: 10, border: `1px solid rgba(${ac},.25)`, background: `rgba(${ac},.09)`, color: `rgb(${ac})`, cursor: "pointer", fontWeight: 700 }}>▶</button>
         </div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,.1)", fontFamily: "monospace", marginTop: 5, textAlign: "center" }}>Enter para enviar · ☰ para menú</div>
       </div>
     </div>
   );
 }
-// ─── ESTILOS GLOBALES ─────────────────────────────────────────────────────────
+
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-  @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #04090b; }
   @keyframes tp-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
   @keyframes tp-pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
-  @keyframes tp-blink { 0%,80%,100%{opacity:.2;transform:scale(.7)} 40%{opacity:1;transform:scale(1)} }
-  @keyframes tp-in    { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
   .tp-float { animation: tp-float 3s ease-in-out infinite; }
-  .tp-msg   { animation: tp-in .24s ease both; }
   ::-webkit-scrollbar { width: 3px; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.07); border-radius: 2px; }
-  button:active { opacity: .7; }
-  textarea:focus { outline: none; }
-  font-family: 'Outfit', sans-serif;
 `;
