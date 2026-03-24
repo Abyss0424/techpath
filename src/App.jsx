@@ -67,8 +67,10 @@ Analiza el "${userGoal}" y actúa estrictamente bajo este bucle lógico:
    - Mientras el usuario NO haya definido un objetivo válido, CUALQUIER respuesta debe terminar EXACTAMENTE así:
    "¡Me encantaría empezar! Pero para serte útil de verdad, dime: ¿Cómo te llamas? y ¿Cuál es ese objetivo profesional o técnico que quieres conquistar?"
 
-4. SI EL OBJETIVO ES VÁLIDO: (Ej: "Quiero ser Cloud Engineer" o "Desarrollo Web"):
-   - ACCIÓN: Rompe el bucle de validación. Adopta tu nombre de Mentor (ej. CloudMentor, WebMentor) y salta inmediatamente a la sección "🚀 PRIMER MENSAJE".
+4. SI EL OBJETIVO ES VÁLIDO:
+   - ACCIÓN: Tu respuesta DEBE empezar con esta línea exacta:
+     META_VALIDADA: [Escribe aquí el nombre de la meta técnica, ej: Desarrollador Frontend]
+   - Luego, adopta tu nombre de Mentor (ej. CloudMentor) y salta a la sección "🚀 PRIMER MENSAJE".
 
 ---
 
@@ -338,24 +340,29 @@ export default function App() {
     setScreen("chat");
 
     try {
-      const firstMsg = await geminiCall(
-        [{ role: "user", content: goal }],
-        getSystemPrompt(goal)
-      );
-
-      const match = firstMsg.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
-      const finalMentorName = match ? match[1] : "TechPathAI";
+      const res = await geminiCall([{ role: "user", content: goal }], getSystemPrompt(goal));
       
-      setMentorName(finalMentorName);
-      const initialMessages = [{ role: "assistant", content: firstMsg }];
+      // Lógica de detección:
+      let finalMsg = res;
+      let newGoal = goal;
+      let newMentor = "TechPathAI";
+
+      if (res.includes("META_VALIDADA:")) {
+        const matchMeta = res.match(/META_VALIDADA:\s*(.*)/i);
+        if (matchMeta) newGoal = matchMeta[1].split('\n')[0].trim();
+        finalMsg = res.replace(/META_VALIDADA:.*\n?/, "").trim();
+        
+        const matchMentor = finalMsg.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
+        if (matchMentor) newMentor = matchMentor[1];
+      }
+
+      setMentorName(newMentor);
+      setGoalText(newGoal);
+      const initialMessages = [{ role: "assistant", content: finalMsg }];
       setMessages(initialMessages);
 
-      setSavedChats(prev => [
-        { ...newChatObject, mentorName: finalMentorName, messages: initialMessages },
-        ...prev
-      ]);
-
-    } catch (e) {
+      setSavedChats(prev => [{ ...newChatObject, mentorName: newMentor, goalText: newGoal, messages: initialMessages }, ...prev]);
+    }  catch (e) {
       setError(e.message);
       const errorMsg = [{ role: "assistant", content: `⚠️ Error: ${e.message}` }];
       setMessages(errorMsg);
@@ -380,31 +387,27 @@ export default function App() {
     setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: next } : c));
 
     try {
-      const reply = await geminiCall(next, getSystemPrompt(goalText));
-      const finalMessages = [...next, { role: "assistant", content: reply }];
+      const res = await geminiCall(next, getSystemPrompt(goalText));
       
-      let newMentorName = mentorName;
-      let newGoalText = goalText;
+      let finalMsg = res;
+      let newMentor = mentorName;
+      let newGoal = goalText;
 
-      if (mentorName === "TechPathAI") {
-        const match = reply.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
-        if (match) {
-          newMentorName = match[1];
-          newGoalText = text; 
-          setMentorName(newMentorName);
-          setGoalText(newGoalText);
-        }
+      if (res.includes("META_VALIDADA:")) {
+        const matchMeta = res.match(/META_VALIDADA:\s*(.*)/i);
+        if (matchMeta) newGoal = matchMeta[1].split('\n')[0].trim();
+        finalMsg = res.replace(/META_VALIDADA:.*\n?/, "").trim();
+        
+        const matchMentor = finalMsg.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
+        if (matchMentor) newMentor = matchMentor[1];
       }
 
-      setMessages(finalMessages);
-      
-      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { 
-        ...c, 
-        messages: finalMessages,
-        mentorName: newMentorName,
-        goalText: newGoalText
-      } : c));
+      const updatedMessages = [...next, { role: "assistant", content: finalMsg }];
+      setMessages(updatedMessages);
+      setMentorName(newMentor);
+      setGoalText(newGoal);
 
+      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: updatedMessages, mentorName: newMentor, goalText: newGoal } : c));
     } catch (e) {
       setError(e.message);
       const finalMessages = [...next, { role: "assistant", content: `⚠️ ${e.message}` }];
