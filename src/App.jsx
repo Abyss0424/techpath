@@ -559,39 +559,47 @@ export default function App() {
 
       {sideOpen && <div onClick={() => setSideOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", zIndex: 40, backdropFilter: "blur(3px)" }} />}
 
-      {/* Sidebar (Modificación 3) */}
+      {/* Sidebar (Modificado: Menú Principal arriba, sin Cambiar Área abajo) */}
       <aside style={{ position: "fixed", top: 0, left: 0, bottom: 0, width: 230, background: "#040e07", borderRight: `1px solid rgba(${ac},.13)`, display: "flex", flexDirection: "column", zIndex: 50, transition: "transform .27s cubic-bezier(.4,0,.2,1)", transform: sideOpen ? "translateX(0)" : "translateX(-100%)", overflowY: "auto" }}>
         
+        {/* Cabecera del Sidebar */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "15px 14px 13px", borderBottom: `1px solid rgba(${ac},.08)` }}>
           <span style={{ fontSize: 18, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
           <span style={{ flex: 1, fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1 }}>{mentorName}</span>
           <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.22)", fontSize: 15, cursor: "pointer", padding: 4 }}>✕</button>
         </div>
 
-        {/* MODIFICACIÓN 3: Botón Menú Principal */}
+        {/* NUEVO BOTÓN: Menú Principal (Posicionado arriba) */}
         <div style={{ padding: "12px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
           <button onClick={() => setScreen("mainmenu")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,.05)", background: "rgba(255,255,255,.03)", color: "rgba(255,255,255,.7)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
             <span>🧭</span> Menú Principal
           </button>
         </div>
 
+        {/* Hoja de Ruta */}
         <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
           <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>HOJA DE RUTA</div>
           {DEFAULT_PHASES.map((ph, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, marginBottom: 3, border: `1px solid ${i === 0 ? `rgba(${ac},.2)` : "transparent"}`, background: i === 0 ? `rgba(${ac},.05)` : "transparent" }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? `rgb(${ac})` : `rgba(${ac},.12)`, flexShrink: 0, boxShadow: i === 0 ? `0 0 6px rgb(${ac})` : "none" }} /><span style={{ fontSize: 12, color: i === 0 ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.14)", flex: 1, fontWeight: i === 0 ? 600 : 400 }}>{ph}</span>{i > 0 && <span style={{ fontSize: 11, opacity: .22 }}>🔒</span>}{i === 0 && <span style={{ fontSize: 11, color: `rgb(${ac})` }}>→</span>}</div>
           ))}
         </div>
-        <div style={{ padding: "13px 14px" }}><div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>TU OBJETIVO</div><p style={{ fontSize: 11, color: "rgba(255,255,255,.28)", lineHeight: 1.55, margin: 0, fontStyle: "italic" }}>{goalText}</p></div>
-        
-        {/* Modificación 1: Botón Eliminar esta ruta dentro del chat */}
-        <div style={{ padding: "12px 14px", marginTop: "auto", borderTop: `1px solid rgba(${ac},.06)` }}>
-          <button onClick={(e) => deleteChat(currentChatId, e)} style={{ width: "100%", padding: "9px", borderRadius: 8, border: "1px solid rgba(255,80,80,.15)", background: "rgba(255,80,80,.03)", color: "rgba(255,80,80,.6)", cursor: "pointer", fontSize: 11, fontWeight: 600, transition: "all .2s" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,80,80,.1)"; e.currentTarget.style.color = "rgba(255,80,80,.9)"; }}>
-            ✕ Eliminar esta ruta
-          </button>
+
+        {/* Progreso */}
+        <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
+          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 9 }}>PROGRESO</div>
+          {[["Paths completados", "0", `rgb(${ac})`], ["En curso", "0", "#ffa502"], ["Certificaciones", "0 🏆", "#7ee8fa"]].map(([l, v, c]) => (
+            <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>{l}</span>
+              <span style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: c }}>{v}</span>
+            </div>
+          ))}
         </div>
+
+        {/* Tu Objetivo */}
+        <div style={{ padding: "13px 14px" }}><div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>TU OBJETIVO</div><p style={{ fontSize: 11, color: "rgba(255,255,255,.28)", lineHeight: 1.55, margin: 0, fontStyle: "italic" }}>{goalText}</p></div>
       </aside>
 
-      {/* Header */}
+      {/* Header del Chat */}
       <header style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderBottom: `1px solid rgba(${ac},.1)`, background: "rgba(3,10,6,.97)", flexShrink: 0, zIndex: 10 }}><button onClick={() => setSideOpen((v) => !v)} aria-label="Menú" style={{ background: "none", border: "none", cursor: "pointer", padding: "5px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /></button><span style={{ fontSize: 16, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span><span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1, flex: 1 }}>{mentorName}</span><span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>ETAPA 1</span><span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})`, boxShadow: `0 0 7px ${loading ? "#ffa502" : `rgb(${ac})`}`, display: "inline-block", transition: "all .3s" }} /></header>
 
       {/* Mensajes */}
@@ -610,7 +618,6 @@ export default function App() {
     </div>
   );
 }
-
 // ─── ESTILOS GLOBALES ─────────────────────────────────────────────────────────
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
