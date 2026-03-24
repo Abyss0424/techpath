@@ -517,13 +517,13 @@ export default function App() {
   );
 
   // ── CHAT SCREEN ───────────────────────────────────────────────────────────
-  return (
+return (
     <div style={{ height: "100vh", background: "#030a06", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
       <style>{CSS}</style>
 
       {sideOpen && <div onClick={() => setSideOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", zIndex: 40, backdropFilter: "blur(3px)" }} />}
 
-      {/* Sidebar (Modificado: Menú Principal arriba, sin Cambiar Área abajo) */}
+      {/* Sidebar */}
       <aside style={{ position: "fixed", top: 0, left: 0, bottom: 0, width: 230, background: "#040e07", borderRight: `1px solid rgba(${ac},.13)`, display: "flex", flexDirection: "column", zIndex: 50, transition: "transform .27s cubic-bezier(.4,0,.2,1)", transform: sideOpen ? "translateX(0)" : "translateX(-100%)", overflowY: "auto" }}>
         
         {/* Cabecera del Sidebar */}
@@ -533,7 +533,7 @@ export default function App() {
           <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.22)", fontSize: 15, cursor: "pointer", padding: 4 }}>✕</button>
         </div>
 
-        {/* NUEVO BOTÓN: Menú Principal (Posicionado arriba) */}
+        {/* Botón Menú Principal */}
         <div style={{ padding: "12px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
           <button onClick={() => setScreen("mainmenu")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,.05)", background: "rgba(255,255,255,.03)", color: "rgba(255,255,255,.7)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
             <span>🧭</span> Menú Principal
@@ -544,7 +544,12 @@ export default function App() {
         <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
           <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>HOJA DE RUTA</div>
           {DEFAULT_PHASES.map((ph, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, marginBottom: 3, border: `1px solid ${i === 0 ? `rgba(${ac},.2)` : "transparent"}`, background: i === 0 ? `rgba(${ac},.05)` : "transparent" }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? `rgb(${ac})` : `rgba(${ac},.12)`, flexShrink: 0, boxShadow: i === 0 ? `0 0 6px rgb(${ac})` : "none" }} /><span style={{ fontSize: 12, color: i === 0 ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.14)", flex: 1, fontWeight: i === 0 ? 600 : 400 }}>{ph}</span>{i > 0 && <span style={{ fontSize: 11, opacity: .22 }}>🔒</span>}{i === 0 && <span style={{ fontSize: 11, color: `rgb(${ac})` }}>→</span>}</div>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, marginBottom: 3, border: `1px solid ${i === 0 ? `rgba(${ac},.2)` : "transparent"}`, background: i === 0 ? `rgba(${ac},.05)` : "transparent" }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? `rgb(${ac})` : `rgba(${ac},.12)`, flexShrink: 0, boxShadow: i === 0 ? `0 0 6px rgb(${ac})` : "none" }} />
+              <span style={{ fontSize: 12, color: i === 0 ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.14)", flex: 1, fontWeight: i === 0 ? 600 : 400 }}>{ph}</span>
+              {i > 0 && <span style={{ fontSize: 11, opacity: .22 }}>🔒</span>}
+              {i === 0 && <span style={{ fontSize: 11, color: `rgb(${ac})` }}>→</span>}
+            </div>
           ))}
         </div>
 
@@ -559,7 +564,7 @@ export default function App() {
           ))}
         </div>
 
-    {/* Tu Objetivo Principal */}
+        {/* Tu Objetivo Principal (Lógica de Validación) */}
         <div style={{ padding: "13px 14px" }}>
           <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>
             TU OBJETIVO PRINCIPAL
@@ -575,7 +580,7 @@ export default function App() {
             {mentorName === "TechPathAI" ? "⚠ Indefinido" : goalText}
           </p>
         </div>
-      </aside> {/* <--- ESTA ES LA ETIQUETA QUE FALTABA */}
+      </aside>
 
       {/* Header del Chat */}
       <header style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderBottom: `1px solid rgba(${ac},.1)`, background: "rgba(3,10,6,.97)", flexShrink: 0, zIndex: 10 }}>
@@ -589,20 +594,58 @@ export default function App() {
         <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>ETAPA 1</span>
         <span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})`, boxShadow: `0 0 7px ${loading ? "#ffa502" : `rgb(${ac})`}`, display: "inline-block", transition: "all .3s" }} />
       </header>
-      
+
       {/* Mensajes */}
       <div style={{ flex: 1, overflow: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 13 }}>
-        {loading && messages.length === 0 && (<div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 16, opacity: .7, marginTop: "20%" }}><div style={{ fontSize: 32, color: `rgb(${ac})`, animation: "tp-pulse 1.5s infinite" }}>⬡</div><div style={{ fontSize: 13, fontFamily: "monospace", color: `rgb(${ac})` }}>Preparando tu mentor...</div><div style={{ display: "flex", gap: 6 }}>{[0, .2, .4].map((d, i) => (<span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />))}</div></div>)}
-        {messages.map((m, i) => (<div key={i} className="tp-msg" style={{ display: "flex", gap: 8, justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-start" }}>{m.role === "assistant" && (<div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0, marginTop: 2 }}>{area?.icon || "⬡"}</div>)}<div style={m.role === "user" ? { maxWidth: "76%", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", borderRadius: "12px 3px 12px 12px", padding: "10px 13px", fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,.78)" } : { maxWidth: "88%", background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "12px 14px" }}>{m.role === "user" ? m.content : <MD text={m.content} ac={ac} />}</div>{m.role === "user" && (<div style={{ width: 27, height: 27, borderRadius: 7, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,.45)", flexShrink: 0, marginTop: 2 }}>U</div>)}</div>))}
-        {loading && messages.length > 0 && (<div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}><div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0 }}>{area?.icon || "⬡"}</div><div style={{ background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "13px 16px", display: "flex", gap: 5, alignItems: "center" }}>{[0, .2, .4].map((d, i) => (<span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />))}</div></div>)}
+        {loading && messages.length === 0 && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 16, opacity: .7, marginTop: "20%" }}>
+            <div style={{ fontSize: 32, color: `rgb(${ac})`, animation: "tp-pulse 1.5s infinite" }}>⬡</div>
+            <div style={{ fontSize: 13, fontFamily: "monospace", color: `rgb(${ac})` }}>Preparando tu mentor...</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              {[0, .2, .4].map((d, i) => (<span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />))}
+            </div>
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} className="tp-msg" style={{ display: "flex", gap: 8, justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-start" }}>
+            {m.role === "assistant" && (
+              <div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0, marginTop: 2 }}>{area?.icon || "⬡"}</div>
+            )}
+            <div style={m.role === "user" ? { maxWidth: "76%", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", borderRadius: "12px 3px 12px 12px", padding: "10px 13px", fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,.78)" } : { maxWidth: "88%", background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "12px 14px" }}>
+              {m.role === "user" ? m.content : <MD text={m.content} ac={ac} />}
+            </div>
+            {m.role === "user" && (
+              <div style={{ width: 27, height: 27, borderRadius: 7, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,.45)", flexShrink: 0, marginTop: 2 }}>U</div>
+            )}
+          </div>
+        ))}
+        {loading && messages.length > 0 && (
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0 }}>{area?.icon || "⬡"}</div>
+            <div style={{ background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "13px 16px", display: "flex", gap: 5, alignItems: "center" }}>
+              {[0, .2, .4].map((d, i) => (<span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />))}
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
       {/* Banner de error */}
-      {error && (<div style={{ padding: "9px 15px", background: "rgba(255,80,80,.08)", borderTop: "1px solid rgba(255,80,80,.2)", fontSize: 12, color: "#ff8080", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}><span>⚠️ {error}</span><button onClick={() => setError("")} style={{ background: "none", border: "none", color: "rgba(255,80,80,.5)", cursor: "pointer", fontSize: 14 }}>✕</button></div>)}
+      {error && (
+        <div style={{ padding: "9px 15px", background: "rgba(255,80,80,.08)", borderTop: "1px solid rgba(255,80,80,.2)", fontSize: 12, color: "#ff8080", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+          <span>⚠️ {error}</span>
+          <button onClick={() => setError("")} style={{ background: "none", border: "none", color: "rgba(255,80,80,.5)", cursor: "pointer", fontSize: 14 }}>✕</button>
+        </div>
+      )}
 
       {/* Input */}
-      <div style={{ padding: "11px 14px 13px", borderTop: `1px solid rgba(${ac},.08)`, background: "rgba(3,10,6,.98)", flexShrink: 0 }}><div style={{ display: "flex", gap: 8 }}><textarea ref={inputRef} rows={1} style={{ flex: 1, background: "rgba(4,16,8,.95)", border: `1px solid rgba(${ac},.14)`, borderRadius: 10, padding: "11px 13px", color: "#c8dfd4", fontSize: 13, fontFamily: "'Outfit',sans-serif", outline: "none", caretColor: `rgb(${ac})`, minWidth: 0, resize: "none", minHeight: "42px", maxHeight: "120px", overflowY: "auto", lineHeight: 1.5 }} value={input} onChange={(e) => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); e.target.style.height = "auto"; } }} placeholder={loading ? "El mentor está respondiendo..." : "Escribe tu respuesta..."} disabled={loading} /><button onClick={send} disabled={loading || !input.trim()} style={{ padding: "11px 15px", borderRadius: 10, border: `1px solid rgba(${ac},.25)`, background: `rgba(${ac},.09)`, color: `rgb(${ac})`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "monospace", flexShrink: 0, opacity: loading || !input.trim() ? .3 : 1, transition: "opacity .2s" }}>▶</button></div><div style={{ fontSize: 10, color: "rgba(255,255,255,.1)", fontFamily: "monospace", marginTop: 5, textAlign: "center" }}>Enter para enviar · ☰ para menú</div></div>
+      <div style={{ padding: "11px 14px 13px", borderTop: `1px solid rgba(${ac},.08)`, background: "rgba(3,10,6,.98)", flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          <textarea ref={inputRef} rows={1} style={{ flex: 1, background: "rgba(4,16,8,.95)", border: `1px solid rgba(${ac},.14)`, borderRadius: 10, padding: "11px 13px", color: "#c8dfd4", fontSize: 13, fontFamily: "'Outfit',sans-serif", outline: "none", caretColor: `rgb(${ac})`, minWidth: 0, resize: "none", minHeight: "42px", maxHeight: "120px", overflowY: "auto", lineHeight: 1.5 }} value={input} onChange={(e) => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); e.target.style.height = "auto"; } }} placeholder={loading ? "El mentor está respondiendo..." : "Escribe tu respuesta..."} disabled={loading} />
+          <button onClick={send} disabled={loading || !input.trim()} style={{ padding: "11px 15px", borderRadius: 10, border: `1px solid rgba(${ac},.25)`, background: `rgba(${ac},.09)`, color: `rgb(${ac})`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "monospace", flexShrink: 0, opacity: loading || !input.trim() ? .3 : 1, transition: "opacity .2s" }}>▶</button>
+        </div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,.1)", fontFamily: "monospace", marginTop: 5, textAlign: "center" }}>Enter para enviar · ☰ para menú</div>
+      </div>
     </div>
   );
 }
