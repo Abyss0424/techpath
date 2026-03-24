@@ -559,26 +559,37 @@ export default function App() {
           ))}
         </div>
 
-        {/* Tu Objetivo - Lógica Modificada */}
-<div style={{ padding: "13px 14px" }}>
-  <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>
-    TU OBJETIVO PRINCIPAL
-  </div>
-  <p style={{ 
-    fontSize: 11, 
-    color: mentorName === "TechPathAI" ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.28)", 
-    lineHeight: 1.55, 
-    margin: 0, 
-    fontStyle: "italic",
-    textTransform: mentorName === "TechPathAI" ? "uppercase" : "none"
-  }}>
-    {mentorName === "TechPathAI" ? "⚠ Indefinido" : goalText}
-  </p>
-</div>
+    {/* Tu Objetivo Principal */}
+        <div style={{ padding: "13px 14px" }}>
+          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>
+            TU OBJETIVO PRINCIPAL
+          </div>
+          <p style={{ 
+            fontSize: 11, 
+            color: mentorName === "TechPathAI" ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.28)", 
+            lineHeight: 1.55, 
+            margin: 0, 
+            fontStyle: "italic",
+            textTransform: mentorName === "TechPathAI" ? "uppercase" : "none"
+          }}>
+            {mentorName === "TechPathAI" ? "⚠ Indefinido" : goalText}
+          </p>
+        </div>
+      </aside> {/* <--- ESTA ES LA ETIQUETA QUE FALTABA */}
 
       {/* Header del Chat */}
-      <header style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderBottom: `1px solid rgba(${ac},.1)`, background: "rgba(3,10,6,.97)", flexShrink: 0, zIndex: 10 }}><button onClick={() => setSideOpen((v) => !v)} aria-label="Menú" style={{ background: "none", border: "none", cursor: "pointer", padding: "5px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /></button><span style={{ fontSize: 16, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span><span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1, flex: 1 }}>{mentorName}</span><span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>ETAPA 1</span><span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})`, boxShadow: `0 0 7px ${loading ? "#ffa502" : `rgb(${ac})`}`, display: "inline-block", transition: "all .3s" }} /></header>
-
+      <header style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderBottom: `1px solid rgba(${ac},.1)`, background: "rgba(3,10,6,.97)", flexShrink: 0, zIndex: 10 }}>
+        <button onClick={() => setSideOpen((v) => !v)} aria-label="Menú" style={{ background: "none", border: "none", cursor: "pointer", padding: "5px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
+          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
+          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
+        </button>
+        <span style={{ fontSize: 16, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1, flex: 1 }}>{mentorName}</span>
+        <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>ETAPA 1</span>
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})`, boxShadow: `0 0 7px ${loading ? "#ffa502" : `rgb(${ac})`}`, display: "inline-block", transition: "all .3s" }} />
+      </header>
+      
       {/* Mensajes */}
       <div style={{ flex: 1, overflow: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 13 }}>
         {loading && messages.length === 0 && (<div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 16, opacity: .7, marginTop: "20%" }}><div style={{ fontSize: 32, color: `rgb(${ac})`, animation: "tp-pulse 1.5s infinite" }}>⬡</div><div style={{ fontSize: 13, fontFamily: "monospace", color: `rgb(${ac})` }}>Preparando tu mentor...</div><div style={{ display: "flex", gap: 6 }}>{[0, .2, .4].map((d, i) => (<span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />))}</div></div>)}
