@@ -1,12 +1,12 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 // ─── GROQ API CALL ───────────────────────────────────────────────────────────
-// Usa la variable de entorno VITE_GROQ_KEY del archivo .env
+// Lee la key desde localStorage (guardada por el usuario al entrar)
 async function geminiCall(history, systemPrompt) {
-  const API_KEY = import.meta.env.VITE_GROQ_KEY;
+  const API_KEY = localStorage.getItem("tp_groq_key");
 
   if (!API_KEY) {
-    throw new Error("No se encontró VITE_GROQ_KEY en el archivo .env");
+    throw new Error("No se encontró la API key. Recarga la página.");
   }
 
   const messages = [
@@ -196,7 +196,46 @@ function fmt(text, ac) {
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [screen,      setScreen]      = useState("welcome");
+  // ── NUEVO: estado de la API key ──────────────────────────────────────────
+  const [keyInput,   setKeyInput]   = useState("");
+  const [keyError,   setKeyError]   = useState("");
+  const [keyLoading, setKeyLoading] = useState(false);
+  const keyRef = useRef(null);
+
+  // Determina la pantalla inicial: "apikey" si no hay key guardada, "welcome" si ya la hay
+  const [screen, setScreen] = useState(
+    () => localStorage.getItem("tp_groq_key") ? "welcome" : "apikey"
+  );
+
+  useEffect(() => {
+    if (screen === "apikey") keyRef.current?.focus();
+  }, [screen]);
+
+  // Valida la key con una llamada de prueba antes de guardarla
+  const saveKey = useCallback(async () => {
+    const k = keyInput.trim();
+    if (!k) return;
+    setKeyLoading(true);
+    setKeyError("");
+    try {
+      // Guardamos temporalmente para que geminiCall la use
+      localStorage.setItem("tp_groq_key", k);
+      await geminiCall(
+        [{ role: "user", content: "Responde solo: OK" }],
+        "Eres un asistente. Responde solo la palabra OK."
+      );
+      // Si no lanzó error, la key es válida — nos quedamos con ella
+      setScreen("welcome");
+    } catch (e) {
+      // Si falló, borramos la key inválida
+      localStorage.removeItem("tp_groq_key");
+      setKeyError("Key inválida o sin acceso. Verifica que empiece con gsk_ y vuelve a intentarlo.");
+    } finally {
+      setKeyLoading(false);
+    }
+  }, [keyInput]);
+  // ── FIN NUEVO ────────────────────────────────────────────────────────────
+
   const [area,        setArea]        = useState(null);
   const [ac,          setAc]          = useState("0,220,120");
   const [messages,    setMessages]    = useState([]);
@@ -226,11 +265,11 @@ export default function App() {
     setMessages([]);
 
     try {
-      const firstMsg = await geminiCall( // o groqCall si le cambiaste el nombre
+      const firstMsg = await geminiCall(
         [{ role: "user", content: `Mi objetivo es: ${goal}` }],
-        getSystemPrompt(goal) 
+        getSystemPrompt(goal)
       );
-      
+
       const match = firstMsg.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
       if (match) setMentorName(match[1]);
       setMessages([{ role: "assistant", content: firstMsg }]);
@@ -242,7 +281,6 @@ export default function App() {
       scrollBottom();
     }
   }, []);
-  
 
   // Enviar mensaje en el chat
   const send = useCallback(async () => {
@@ -255,7 +293,7 @@ export default function App() {
     setLoading(true);
     scrollBottom();
     try {
-    const reply = await geminiCall(next, getSystemPrompt(goalText));
+      const reply = await geminiCall(next, getSystemPrompt(goalText));
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
     } catch (e) {
       setError(e.message);
@@ -266,6 +304,103 @@ export default function App() {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [input, loading, messages, goalText]);
+
+  // ── NUEVA PANTALLA: API KEY ───────────────────────────────────────────────
+  if (screen === "apikey") return (
+    <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <style>{CSS}</style>
+      <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 28 }}>
+
+        {/* Logo */}
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 36 }} className="tp-float">⬡</div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, fontFamily: "monospace", color: "#00dc78", margin: 0, letterSpacing: 1 }}>TechPath</h1>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,.3)", margin: 0 }}>AI Career Mentor</p>
+        </div>
+
+        {/* Card */}
+        <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 16, padding: "28px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
+          <div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: "0 0 6px", fontFamily: "monospace" }}>
+              Ingresa tu API Key de Groq
+            </h2>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,.32)", margin: 0, lineHeight: 1.6 }}>
+              TechPath usa tu propia key para funcionar. Es gratuita y se guarda solo en tu navegador — nunca en ningún servidor.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            <label style={{ fontSize: 10, fontFamily: "monospace", color: "rgba(255,255,255,.25)", letterSpacing: 1 }}>
+              API KEY DE GROQ
+            </label>
+            <input
+              ref={keyRef}
+              type="password"
+              style={{
+                background: "rgba(255,255,255,.04)",
+                border: `1px solid ${keyError ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.1)"}`,
+                borderRadius: 10,
+                padding: "12px 14px",
+                color: "#e8f4ec",
+                fontSize: 14,
+                fontFamily: "monospace",
+                outline: "none",
+                letterSpacing: 1,
+                transition: "border .2s",
+              }}
+              value={keyInput}
+              onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && saveKey()}
+              onFocus={(e) => e.target.style.borderColor = "rgba(0,220,120,.4)"}
+              onBlur={(e) => e.target.style.borderColor = keyError ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.1)"}
+              placeholder="gsk_..."
+              disabled={keyLoading}
+            />
+            {keyError && (
+              <p style={{ fontSize: 12, color: "#ff8080", margin: 0, lineHeight: 1.5 }}>{keyError}</p>
+            )}
+          </div>
+
+          <button
+            onClick={saveKey}
+            disabled={!keyInput.trim() || keyLoading}
+            style={{
+              padding: "13px",
+              borderRadius: 11,
+              border: "none",
+              background: !keyInput.trim() || keyLoading
+                ? "rgba(255,255,255,.05)"
+                : "linear-gradient(135deg,#00dc78,#00aa55)",
+              color: !keyInput.trim() || keyLoading ? "rgba(255,255,255,.2)" : "#030a06",
+              cursor: !keyInput.trim() || keyLoading ? "default" : "pointer",
+              fontSize: 14,
+              fontWeight: 700,
+              fontFamily: "monospace",
+              transition: "all .2s",
+            }}
+          >
+            {keyLoading ? "Verificando..." : "Acceder →"}
+          </button>
+
+          <div style={{ borderTop: "1px solid rgba(255,255,255,.06)", paddingTop: 14 }}>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,.22)", margin: 0, lineHeight: 1.7 }}>
+              ¿No tienes key? Crea una gratis en{" "}
+              <a
+                href="https://console.groq.com"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: "#00dc78", textDecoration: "none" }}
+              >
+                console.groq.com
+              </a>
+              {" "}→ API Keys → Create API Key
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+  // ── FIN NUEVA PANTALLA ───────────────────────────────────────────────────
 
   // ── WELCOME SCREEN ────────────────────────────────────────────────────────
   if (screen === "welcome") return (
@@ -480,21 +615,21 @@ export default function App() {
       {/* Input */}
       <div style={{ padding: "11px 14px 13px", borderTop: `1px solid rgba(${ac},.08)`, background: "rgba(3,10,6,.98)", flexShrink: 0 }}>
         <div style={{ display: "flex", gap: 8 }}>
-          
+
           <textarea
             ref={inputRef}
             rows={1}
-            style={{ 
-              flex: 1, 
-              background: "rgba(4,16,8,.95)", 
-              border: `1px solid rgba(${ac},.14)`, 
-              borderRadius: 10, 
-              padding: "11px 13px", 
-              color: "#c8dfd4", 
-              fontSize: 13, 
-              fontFamily: "'Outfit',sans-serif", 
-              outline: "none", 
-              caretColor: `rgb(${ac})`, 
+            style={{
+              flex: 1,
+              background: "rgba(4,16,8,.95)",
+              border: `1px solid rgba(${ac},.14)`,
+              borderRadius: 10,
+              padding: "11px 13px",
+              color: "#c8dfd4",
+              fontSize: 13,
+              fontFamily: "'Outfit',sans-serif",
+              outline: "none",
+              caretColor: `rgb(${ac})`,
               minWidth: 0,
               resize: "none",
               minHeight: "42px",
@@ -512,7 +647,7 @@ export default function App() {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 send();
-                e.target.style.height = "auto"; 
+                e.target.style.height = "auto";
               }
             }}
             onFocus={(e) => (e.target.style.borderColor = `rgba(${ac},.4)`)}
