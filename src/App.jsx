@@ -312,97 +312,61 @@ export default function App() {
     }
   }, [currentChatId]);
 
-  // ── FUNCIÓN: Inicia el chat con el área elegida ──
-  const startArea = useCallback(async (selectedArea, customText = "") => {
-    const goal = customText || selectedArea.goal;
-    
-    // Crear objeto de chat vacío
-    const newChatId = Date.now().toString(); // ID único basado en tiempo
-    const newChatObject = {
-      id: newChatId,
-      area: selectedArea,
-      ac: selectedArea.color,
-      goalText: goal,
-      mentorName: "TechPathAI",
-      messages: [],
-      createdAt: new Date().toISOString()
-    };
-
-    // Actualizar estados locales
-    setArea(selectedArea);
-    setAc(selectedArea.color);
-    setGoalText(goal);
-    setMessages([]);
-    setCurrentChatId(newChatId);
-    setScreen("chat");
-    setLoading(true);
-    setError("");
-
-    try {
-      const firstMsg = await geminiCall(
-        [{ role: "user", content: `Mi objetivo es: ${goal}` }],
-        getSystemPrompt(goal)
-      );
-
-      const match = firstMsg.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
-      const finalMentorName = match ? match[1] : "TechPathAI";
-      
-      setMentorName(finalMentorName);
-      const initialMessages = [{ role: "assistant", content: firstMsg }];
-      setMessages(initialMessages);
-
-      // Guardar el chat completo en la lista
-      setSavedChats(prev => [
-        { ...newChatObject, mentorName: finalMentorName, messages: initialMessages },
-        ...prev
-      ]);
-
-    } catch (e) {
-      setError(e.message);
-      const initialMessages = [{ role: "assistant", content: `⚠️ ${e.message}` }];
-      setMessages(initialMessages);
-      setSavedChats(prev => [
-        { ...newChatObject, messages: initialMessages },
-        ...prev
-      ]);
-    } finally {
-      setLoading(false);
-      scrollBottom();
-    }
-  }, []);
-
-  // ── FUNCIÓN: Enviar mensaje en el chat ──
   const send = useCallback(async () => {
-    const text = input.trim();
-    if (!text || loading) return;
-    setInput("");
-    setError("");
-    const next = [...messages, { role: "user", content: text }];
-    setMessages(next);
-    setLoading(true);
-    scrollBottom();
+  const text = input.trim(); // Este 'text' es lo que el usuario acaba de escribir
+  if (!text || loading) return;
+  setInput("");
+  setError("");
+  const next = [...messages, { role: "user", content: text }];
+  setMessages(next);
+  setLoading(true);
+  scrollBottom();
 
-    // Actualizar temporalmente el chat en la lista con el mensaje del usuario
-    setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: next } : c));
+  // Actualizar temporalmente el chat en la lista con el mensaje del usuario
+  setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: next } : c));
 
-    try {
-      const reply = await geminiCall(next, getSystemPrompt(goalText));
-      const finalMessages = [...next, { role: "assistant", content: reply }];
-      setMessages(finalMessages);
-      
-      // Guardar la respuesta de la IA en la lista
-      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: finalMessages } : c));
-    } catch (e) {
-      setError(e.message);
-      const finalMessages = [...next, { role: "assistant", content: `⚠️ ${e.message}` }];
-      setMessages(finalMessages);
-      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: finalMessages } : c));
-    } finally {
-      setLoading(false);
-      scrollBottom();
-      setTimeout(() => inputRef.current?.focus(), 100);
+  try {
+    const reply = await geminiCall(next, getSystemPrompt(goalText));
+    const finalMessages = [...next, { role: "assistant", content: reply }];
+    
+    // --- NUEVA LÓGICA DE VALIDACIÓN ---
+    let newMentorName = mentorName;
+    let newGoalText = goalText;
+
+    // Si el mentor sigue siendo el genérico (TechPathAI), 
+    // intentamos ver si la IA ya aceptó el objetivo en esta respuesta.
+    if (mentorName === "TechPathAI") {
+      const match = reply.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
+      if (match) {
+        newMentorName = match[1]; // Ejemplo: "WebMentor"
+        newGoalText = text;      // El objetivo real es lo que el usuario escribió (text)
+        setMentorName(newMentorName);
+        setGoalText(newGoalText);
+      }
     }
-  }, [input, loading, messages, goalText, currentChatId]);
+    // ----------------------------------
+
+    setMessages(finalMessages);
+    
+    // Guardar TODO actualizado en el slot de localStorage
+    setSavedChats(prev => prev.map(c => c.id === currentChatId ? { 
+      ...c, 
+      messages: finalMessages,
+      mentorName: newMentorName, // Guardamos el nombre validado
+      goalText: newGoalText      // Guardamos el objetivo real validado
+    } : c));
+
+  } catch (e) {
+    setError(e.message);
+    const finalMessages = [...next, { role: "assistant", content: `⚠️ ${e.message}` }];
+    setMessages(finalMessages);
+    setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: finalMessages } : c));
+  } finally {
+    setLoading(false);
+    scrollBottom();
+    setTimeout(() => inputRef.current?.focus(), 100);
+  }
+}, [input, loading, messages, goalText, currentChatId, mentorName]); // Agregué mentorName a las dependencias
 
   // ── NUEVA PANTALLA: API KEY ───────────────────────────────────────────────
   if (screen === "apikey") return (
@@ -595,9 +559,22 @@ export default function App() {
           ))}
         </div>
 
-        {/* Tu Objetivo */}
-        <div style={{ padding: "13px 14px" }}><div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>TU OBJETIVO</div><p style={{ fontSize: 11, color: "rgba(255,255,255,.28)", lineHeight: 1.55, margin: 0, fontStyle: "italic" }}>{goalText}</p></div>
-      </aside>
+        {/* Tu Objetivo - Lógica Modificada */}
+<div style={{ padding: "13px 14px" }}>
+  <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>
+    TU OBJETIVO PRINCIPAL
+  </div>
+  <p style={{ 
+    fontSize: 11, 
+    color: mentorName === "TechPathAI" ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.28)", 
+    lineHeight: 1.55, 
+    margin: 0, 
+    fontStyle: "italic",
+    textTransform: mentorName === "TechPathAI" ? "uppercase" : "none"
+  }}>
+    {mentorName === "TechPathAI" ? "⚠ Indefinido" : goalText}
+  </p>
+</div>
 
       {/* Header del Chat */}
       <header style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderBottom: `1px solid rgba(${ac},.1)`, background: "rgba(3,10,6,.97)", flexShrink: 0, zIndex: 10 }}><button onClick={() => setSideOpen((v) => !v)} aria-label="Menú" style={{ background: "none", border: "none", cursor: "pointer", padding: "5px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /></button><span style={{ fontSize: 16, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span><span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1, flex: 1 }}>{mentorName}</span><span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>ETAPA 1</span><span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})`, boxShadow: `0 0 7px ${loading ? "#ffa502" : `rgb(${ac})`}`, display: "inline-block", transition: "all .3s" }} /></header>
