@@ -1,0 +1,555 @@
+import { useState, useRef, useCallback } from "react";
+
+// ─── GROQ API CALL ───────────────────────────────────────────────────────────
+// Usa la variable de entorno VITE_GROQ_KEY del archivo .env
+async function geminiCall(history, systemPrompt) {
+  const API_KEY = import.meta.env.VITE_GROQ_KEY;
+
+  if (!API_KEY) {
+    throw new Error("No se encontró VITE_GROQ_KEY en el archivo .env");
+  }
+
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...history.map((m) => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: m.content,
+    })),
+  ];
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages,
+      max_tokens: 1500,
+      temperature: 0.7,
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    const msg = data?.error?.message || `Error HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+
+  const text = data?.choices?.[0]?.message?.content || "";
+  if (!text) throw new Error("Sin respuesta. Intenta de nuevo.");
+  return text;
+}
+
+// ─── SYSTEM PROMPT MAESTRO CONEXIÓN HUMANA ──────────────────────────────
+const getSystemPrompt = (userGoal, userProfile = "") => `
+Eres un Mentor experto con más de 20 años de experiencia, pero tu enfoque es el de un **compañero senior, empático y motivador**. Tu tono es profesional pero cercano, usando un lenguaje que inspire confianza sin ser rudo.
+
+🎯 OBJETIVO DEL USUARIO: "${userGoal}"
+${userProfile ? `👤 PERFIL DEL USUARIO: ${userProfile}` : ""}
+
+---
+
+🛡️ PASO 0: BUCLE DE VALIDACIÓN Y CONEXIÓN (PUERTA DE ENTRADA)
+Analiza el "${userGoal}" y actúa estrictamente bajo este bucle lógico:
+
+1. FILTRO DE REALIDAD Y OBJETIVOS INVÁLIDOS:
+   - CRITERIO: Si el objetivo es solo un saludo ("hola"), es demasiado vago ("quiero aprender algo"), es un concepto no profesional ("ser feliz", "magia"), o no existe como disciplina técnica.
+   - ACCIÓN: Responde con calidez: "¡Hola! Qué alegría saludarte. Soy tu Mentor de carrera y estoy aquí para ayudarte a llegar a la cima. Sin embargo, para poder trazarte un plan de éxito, necesito que aterricemos una meta profesional o técnica concreta (ej. 'Programación', 'Ciberseguridad', 'Diseño UI')."
+   - RESTRICCIÓN: No presentes el mapa de carrera ni hagas el cuestionario. Cierra siempre con la Regla de Cierre.
+
+2. SI EL USUARIO HACE PREGUNTAS GENERALES:
+   - ACCIÓN: Eres un tutor, enseña con gusto de forma didáctica. Resuelve su duda de forma conversacional.
+   - RESTRICCIÓN: Al terminar de explicar, cierra siempre con la Regla de Cierre.
+
+3. REGLA DE CIERRE OBLIGATORIO (EL "GANCHO"):
+   - Mientras el usuario NO haya definido un objetivo válido, CUALQUIER respuesta debe terminar EXACTAMENTE así:
+   "¡Me encantaría empezar! Pero para serte útil de verdad, dime: ¿Cómo te llamas? y ¿Cuál es ese objetivo profesional o técnico que quieres conquistar?"
+
+4. SI EL OBJETIVO ES VÁLIDO: (Ej: "Quiero ser Cloud Engineer" o "Desarrollo Web"):
+   - ACCIÓN: Rompe el bucle de validación. Adopta tu nombre de Mentor (ej. CloudMentor, WebMentor) y salta inmediatamente a la sección "🚀 PRIMER MENSAJE".
+
+---
+
+## 🎭 IDENTIDAD Y FILOSOFÍA
+Una vez validado el objetivo, eres un chat conversacional activo. Guías en DOS GRANDES FASES (Fundamentos y Especialización). Si hay dudas, las resuelves antes de seguir. ¡No eres un robot! Debate, explica y luego retoma la ruta.
+
+---
+
+## 📌 LAS 18 REGLAS DE ORO (RIGOR CON EMPATÍA)
+
+1. **PROGRESIÓN BLOQUEADA:** Celebra los logros, pero mantén el orden. No desbloquees la siguiente tanda hasta que el usuario confirme haber terminado la actual.
+2. 2. **FORMATO DE RECOMENDACIÓN:** Es OBLIGATORIO usar la estructura visual con emojis detallada en la sección "FORMATO EXACTO" más abajo.
+3. **PRIORIDAD GRATUITA:** Cuida el bolsillo del usuario. Solo recomienda pagos si son una inversión transformadora.
+4. **ORDEN LÓGICO:** Construye cimientos sólidos. No dejes que el usuario se abrume con temas avanzados sin saber lo básico.
+5. **REGISTRO DE PROGRESO VISIBLE:** Al inicio de cada tanda, muestra un resumen visual:
+   - Fase/Etapa | Paths ✅/🔄/🔒 | Certificaciones 🏆 | Nivel de Habilidad 💻.
+6. **FOCO EN FASE A:** Asegúrate de que domine las bases antes de hablar de "especialidades".
+7. **TRANSICIÓN DE HITOS:** Haz que el paso a la FASE B se sienta como una graduación. Explica el salto de nivel.
+8. **ESTRATEGIA DE MERCADO:** Recomienda tecnologías que realmente se pidan hoy en las empresas.
+9. **HONESTIDAD Y PRERREQUISITOS:** Si algo es difícil, dilo con cariño: "Antes de esto, necesitamos reforzar X para que no te frustres".
+10. **PATHS ESTRUCTURADOS:** Prioriza rutas completas oficiales. Si recomiendas un curso suelto, trátalo con el mismo seguimiento formal.
+11. **APRENDIZAJE DE ERRORES:** Si fallas, admítelo con humildad usando el bloque:
+    ⚠️ ERROR REGISTRADO
+    ─────────────────────────────
+    ❌ Lo que hice mal | 🔍 Por qué pasó | ✅ Cómo lo corregiré ahora.
+12. **CERTIFICACIONES PROACTIVAS:** Sugiere exámenes de la industria con el bloque 🏆 CERTIFICACIÓN RECOMENDADA cuando lo veas listo.
+13. **EVIDENCIA PRÁCTICA (PORTAFOLIO):** Motívalo a crear usando el bloque 📁 EVIDENCIA A CONSTRUIR. "Si no se ve, no existe".
+14. **IA Y AUTOMATIZACIÓN:** Enséñale a usar la IA como aliado con el bloque 🤖 HABILIDAD DE IA.
+15. **SUBIDA DE NIVEL TÉCNICO:** Identifica la habilidad reina (ej. Scripting) y usa el bloque 💻 MOMENTO DE SUBIR NIVEL.
+16. **MENTALIDAD ANALÍTICA:** A partir de la Etapa 2, plantea retos con el bloque 🧠 EJERCICIO DE MENTALIDAD ANALÍTICA.
+17. **PANORAMA LABORAL:** Al final de cada etapa, dale un baño de realidad optimista con el bloque 💼 PANORAMA LABORAL.
+18. **CAPACIDAD CONVERSACIONAL:** ¡No eres un robot! Si el usuario te pregunta "No entiendo qué es una API" o "¿Este curso de Udemy es mejor que el que me diste?", detente, responde con detalle, debate con él y, cuando la duda esté resuelta, retoma la hoja de ruta.
+
+---
+
+## 💬 FORMATO EXACTO Y OBLIGATORIO PARA RUTAS
+Para que la interfaz gráfica del usuario funcione, **CADA VEZ** que recomiendes una tanda de estudio, debes usar **ESTRICTAMENTE** esta estructura visual con estos emojis exactos:
+
+🧭 FASE ACTUAL: [Nombre]
+📍 ETAPA ACTUAL: [Nombre]
+🎯 OBJETIVO DE ESTA TANDA: [Habilidades]
+
+PATH 1 — [Nombre exacto y oficial del curso/ruta]
+  🏠 Plataforma: [Nombre]
+  💰 Costo: [Gratuito / Precio]
+  ⏱️ Tiempo estimado: [Horas]
+  📊 Nivel: [Principiante/Intermedio/Avanzado]
+  🧠 Por qué ahora: [Justificación pedagógica clave]
+
+*(Repite el formato de PATH para cada recomendación de la tanda)*
+
+⚠️ Completa estos paths en orden. Confirma cuando termines para desbloquear tu siguiente meta.
+
+---
+*(Usa también los bloques 🏆 CERTIFICACIÓN RECOMENDADA, 📁 EVIDENCIA A CONSTRUIR, 🤖 HABILIDAD DE IA y 🧠 EJERCICIO DE MENTALIDAD cuando corresponda, respetando siempre los emojis iniciales).*
+---
+
+## 🚀 PRIMER MENSAJE (Solo tras validar objetivo)
+1. Saluda cálidamente (usa su nombre si ya lo dio).
+2. Presenta el MAPA COMPLETO. Define qué hitos técnicos separan la Fase A de la Fase B para este camino específico.
+3. Haz el cuestionario de personalización, pero **SOLO pregunta lo que el usuario aún no haya mencionado**.
+No generes la primera tanda sin conocer estas respuestas.
+`;
+
+// ─── ÁREAS DISPONIBLES ────────────────────────────────────────────────────────
+const AREAS = [
+  { key: "cyber",      icon: "🛡️", label: "Ciberseguridad / SOC",   color: "0,220,120",   goal: "Quiero ser analista de ciberseguridad SOC y especializarme en Blue Team y Cloud Security" },
+  { key: "frontend",   icon: "⚛️", label: "Front-end Developer",     color: "97,218,251",  goal: "Quiero ser desarrollador front-end, dominar React y el ecosistema moderno de JavaScript" },
+  { key: "devops",     icon: "⚙️", label: "DevOps / SRE",            color: "255,160,50",  goal: "Quiero trabajar en DevOps, aprender CI/CD, Kubernetes, Terraform y cultura SRE" },
+  { key: "networking", icon: "🌐", label: "Redes / Networking",       color: "50,160,255",  goal: "Quiero certificarme en redes, empezar con CCNA y llegar a roles de Network Engineer" },
+  { key: "sysadmin",   icon: "🖥️", label: "Sysadmin / Linux",         color: "255,200,50",  goal: "Quiero ser administrador de sistemas Linux, gestionar servidores y automatizar con scripting" },
+  { key: "ai",         icon: "🤖", label: "IA / Machine Learning",    color: "180,100,255", goal: "Quiero aprender inteligencia artificial y machine learning, desde Python hasta modelos en producción" },
+  { key: "cloud",      icon: "☁️", label: "Cloud Engineer",           color: "100,190,255", goal: "Quiero ser Cloud Engineer, certificarme en AWS y gestionar infraestructura en la nube" },
+  { key: "backend",    icon: "🗄️", label: "Backend / APIs",           color: "255,100,150", goal: "Quiero ser desarrollador backend, construir APIs robustas y aprender bases de datos" },
+  { key: "mobile",     icon: "📱", label: "Mobile Developer",         color: "255,140,80",  goal: "Quiero desarrollar apps móviles, aprender React Native o Flutter y publicar en las tiendas" },
+  { key: "pentest",    icon: "🔐", label: "Pentesting / Red Team",    color: "255,80,80",   goal: "Quiero ser pentester y especialista en Red Team, aprender hacking ético y CTFs" },
+];
+
+const DEFAULT_PHASES = [
+  "Etapa 1 — Fundamentos",
+  "Etapa 2 — Intermedio",
+  "Etapa 3 — Avanzado",
+  "Etapa 4 — Profesional",
+  "Etapa 5 — Especialización",
+];
+
+// ─── MARKDOWN RENDERER ───────────────────────────────────────────────────────
+function MD({ text, ac }) {
+  if (!text) return null;
+  return (
+    <div>
+      {text.split("\n").map((line, i) => {
+        if (/^━{3,}$|^─{3,}$/.test(line.trim()))
+          return <hr key={i} style={{ border: "none", borderTop: `1px solid rgba(${ac},.18)`, margin: "8px 0" }} />;
+        if (line.startsWith("## "))
+          return <div key={i} style={{ color: `rgb(${ac})`, fontSize: 11, fontFamily: "monospace", fontWeight: 700, margin: "14px 0 5px", letterSpacing: 1, textTransform: "uppercase" }}>{line.slice(3)}</div>;
+        if (/^(PATH \d|🧭|📍|🎯|🏆|📁|🤖|💻|🧠|💼|⚠️|🗺️|📋|FASE)/.test(line.trim()) && line.trim())
+          return <div key={i} style={{ margin: "8px 0 3px", fontWeight: 600, color: "rgba(240,255,248,.95)", fontSize: 13 }}>{fmt(line, ac)}</div>;
+        if (line.startsWith("  ") && line.trim())
+          return <div key={i} style={{ paddingLeft: 14, borderLeft: `2px solid rgba(${ac},.22)`, margin: "2px 0 2px 6px", color: "rgba(180,218,200,.72)", fontSize: 12.5 }}>{fmt(line.trim(), ac)}</div>;
+        if (/^[-*→] /.test(line))
+          return (
+            <div key={i} style={{ display: "flex", gap: 7, margin: "2px 0", paddingLeft: 4 }}>
+              <span style={{ color: `rgb(${ac})`, fontSize: 9, marginTop: 5, flexShrink: 0 }}>▸</span>
+              <span style={{ fontSize: 13, color: "rgba(190,220,206,.8)", lineHeight: 1.6 }}>{fmt(line.slice(2), ac)}</span>
+            </div>
+          );
+        if (!line.trim()) return <div key={i} style={{ height: 5 }} />;
+        return <p key={i} style={{ margin: "2px 0", fontSize: 13, lineHeight: 1.7, color: "rgba(200,225,212,.83)" }}>{fmt(line, ac)}</p>;
+      })}
+    </div>
+  );
+}
+
+function fmt(text, ac) {
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/).map((p, i) => {
+    if (p.startsWith("**") && p.endsWith("**"))
+      return <strong key={i} style={{ color: "rgba(240,255,248,1)", fontWeight: 700 }}>{p.slice(2, -2)}</strong>;
+    if (p.startsWith("`") && p.endsWith("`"))
+      return <code key={i} style={{ fontFamily: "monospace", fontSize: 11, background: `rgba(${ac},.1)`, color: `rgb(${ac})`, padding: "1px 5px", borderRadius: 3 }}>{p.slice(1, -1)}</code>;
+    return p;
+  });
+}
+
+// ─── APP ─────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [screen,      setScreen]      = useState("welcome");
+  const [area,        setArea]        = useState(null);
+  const [ac,          setAc]          = useState("0,220,120");
+  const [messages,    setMessages]    = useState([]);
+  const [input,       setInput]       = useState("");
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState("");
+  const [sideOpen,    setSideOpen]    = useState(false);
+  const [mentorName,  setMentorName]  = useState("TechPathAI");
+  const [goalText,    setGoalText]    = useState("");
+  const [customGoal,  setCustomGoal]  = useState("");
+
+  const bottomRef = useRef(null);
+  const inputRef  = useRef(null);
+
+  const scrollBottom = () =>
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
+
+  // Inicia el chat con el área elegida
+  const startArea = useCallback(async (selectedArea, customText = "") => {
+    const goal = customText || selectedArea.goal;
+    setArea(selectedArea);
+    setAc(selectedArea.color);
+    setGoalText(goal);
+    setScreen("chat");
+    setLoading(true);
+    setError("");
+    setMessages([]);
+
+    try {
+      const firstMsg = await geminiCall( // o groqCall si le cambiaste el nombre
+        [{ role: "user", content: `Mi objetivo es: ${goal}` }],
+        getSystemPrompt(goal) 
+      );
+      
+      const match = firstMsg.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
+      if (match) setMentorName(match[1]);
+      setMessages([{ role: "assistant", content: firstMsg }]);
+    } catch (e) {
+      setError(e.message);
+      setMessages([{ role: "assistant", content: `⚠️ ${e.message}` }]);
+    } finally {
+      setLoading(false);
+      scrollBottom();
+    }
+  }, []);
+  
+
+  // Enviar mensaje en el chat
+  const send = useCallback(async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput("");
+    setError("");
+    const next = [...messages, { role: "user", content: text }];
+    setMessages(next);
+    setLoading(true);
+    scrollBottom();
+    try {
+    const reply = await geminiCall(next, getSystemPrompt(goalText));
+      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+    } catch (e) {
+      setError(e.message);
+      setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${e.message}` }]);
+    } finally {
+      setLoading(false);
+      scrollBottom();
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [input, loading, messages, goalText]);
+
+  // ── WELCOME SCREEN ────────────────────────────────────────────────────────
+  if (screen === "welcome") return (
+    <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <style>{CSS}</style>
+
+      <header style={{ width: "100%", padding: "15px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 20, color: "#00dc78" }}>⬡</span>
+        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "#00dc78", letterSpacing: 1 }}>TechPath</span>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginLeft: 2 }}>AI Career Mentor</span>
+      </header>
+
+      <div style={{ width: "100%", maxWidth: 660, padding: "34px 18px 60px", display: "flex", flexDirection: "column", gap: 26 }}>
+
+        {/* Hero */}
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 38, lineHeight: 1 }} className="tp-float">🎯</div>
+          <h1 style={{ fontSize: "clamp(20px,5vw,30px)", fontWeight: 800, fontFamily: "monospace", color: "#fff", margin: 0, lineHeight: 1.25 }}>
+            Tu ruta en tecnología,<br />
+            <span style={{ color: "#00dc78" }}>diseñada por IA.</span>
+          </h1>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", margin: "0 auto", lineHeight: 1.65, maxWidth: 440 }}>
+            Elige tu área o describe tu objetivo. Te asignaré un mentor personalizado con hoja de ruta completa y guía paso a paso.
+          </p>
+        </div>
+
+        {/* Input libre */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+          <textarea
+            rows={3}
+            style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "13px 15px", color: "#e8f4ec", fontSize: 14, fontFamily: "'Outfit',sans-serif", resize: "none", outline: "none", lineHeight: 1.6, boxSizing: "border-box" }}
+            value={customGoal}
+            onChange={(e) => setCustomGoal(e.target.value)}
+            onFocus={(e) => (e.target.style.borderColor = "rgba(0,220,120,.4)")}
+            onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.09)")}
+            placeholder="Ej: Quiero ser pentester y aprender hacking ético desde cero..."
+          />
+          <button
+            onClick={() => {
+              if (!customGoal.trim()) return;
+              const custom = { key: "custom", icon: "🎯", label: "Objetivo personalizado", color: "0,220,120", goal: customGoal.trim() };
+              startArea(custom, customGoal.trim());
+            }}
+            disabled={!customGoal.trim()}
+            style={{ padding: "13px", borderRadius: 12, border: "none", background: customGoal.trim() ? "linear-gradient(135deg,#00dc78,#00aa55)" : "rgba(255,255,255,0.05)", color: customGoal.trim() ? "#030a06" : "rgba(255,255,255,0.2)", cursor: customGoal.trim() ? "pointer" : "default", fontSize: 14, fontWeight: 700, fontFamily: "monospace", transition: "all .2s" }}
+          >
+            Crear mi ruta personalizada →
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", fontFamily: "monospace", whiteSpace: "nowrap" }}>O ELIGE UN ÁREA</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
+        </div>
+
+        {/* Grid de áreas */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 9 }}>
+          {AREAS.map((a) => (
+            <button
+              key={a.key}
+              onClick={() => startArea(a)}
+              style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 12px", borderRadius: 13, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", cursor: "pointer", textAlign: "left", color: "inherit", fontFamily: "'Outfit',sans-serif", transition: "all .18s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = `rgba(${a.color},.4)`; e.currentTarget.style.background = `rgba(${a.color},.06)`; e.currentTarget.style.transform = "translateY(-2px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.transform = "translateY(0)"; }}
+            >
+              <span style={{ fontSize: 24 }}>{a.icon}</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.75)", lineHeight: 1.3 }}>{a.label}</div>
+                <div style={{ fontSize: 10, color: `rgba(${a.color},.7)`, marginTop: 3, fontFamily: "monospace" }}>Ver ruta →</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── CHAT SCREEN ───────────────────────────────────────────────────────────
+  return (
+    <div style={{ height: "100vh", background: "#030a06", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+      <style>{CSS}</style>
+
+      {/* Overlay sidebar móvil */}
+      {sideOpen && (
+        <div onClick={() => setSideOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", zIndex: 40, backdropFilter: "blur(3px)" }} />
+      )}
+
+      {/* Sidebar */}
+      <aside style={{ position: "fixed", top: 0, left: 0, bottom: 0, width: 230, background: "#040e07", borderRight: `1px solid rgba(${ac},.13)`, display: "flex", flexDirection: "column", zIndex: 50, transition: "transform .27s cubic-bezier(.4,0,.2,1)", transform: sideOpen ? "translateX(0)" : "translateX(-100%)", overflowY: "auto" }}>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "15px 14px 13px", borderBottom: `1px solid rgba(${ac},.08)` }}>
+          <span style={{ fontSize: 18, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1 }}>{mentorName}</span>
+          <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.22)", fontSize: 15, cursor: "pointer", padding: 4 }}>✕</button>
+        </div>
+
+        <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
+          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>HOJA DE RUTA</div>
+          {DEFAULT_PHASES.map((ph, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, marginBottom: 3, border: `1px solid ${i === 0 ? `rgba(${ac},.2)` : "transparent"}`, background: i === 0 ? `rgba(${ac},.05)` : "transparent" }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? `rgb(${ac})` : `rgba(${ac},.12)`, flexShrink: 0, boxShadow: i === 0 ? `0 0 6px rgb(${ac})` : "none" }} />
+              <span style={{ fontSize: 12, color: i === 0 ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.14)", flex: 1, fontWeight: i === 0 ? 600 : 400 }}>{ph}</span>
+              {i > 0 && <span style={{ fontSize: 11, opacity: .22 }}>🔒</span>}
+              {i === 0 && <span style={{ fontSize: 11, color: `rgb(${ac})` }}>→</span>}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
+          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 9 }}>PROGRESO</div>
+          {[["Paths completados", "0", `rgb(${ac})`], ["En curso", "0", "#ffa502"], ["Certificaciones", "0 🏆", "#7ee8fa"]].map(([l, v, c]) => (
+            <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>{l}</span>
+              <span style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: c }}>{v}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ padding: "13px 14px" }}>
+          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>TU OBJETIVO</div>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,.28)", lineHeight: 1.55, margin: 0, fontStyle: "italic" }}>{goalText}</p>
+        </div>
+
+        <div style={{ padding: "12px 14px", marginTop: "auto", borderTop: `1px solid rgba(${ac},.06)` }}>
+          <button
+            onClick={() => { setScreen("welcome"); setMessages([]); setSideOpen(false); setError(""); setCustomGoal(""); }}
+            style={{ width: "100%", padding: "9px", borderRadius: 8, border: "1px solid rgba(255,255,255,.07)", background: "transparent", color: "rgba(255,255,255,.28)", cursor: "pointer", fontSize: 11, fontFamily: "monospace", transition: "color .2s" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.7)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.28)")}
+          >
+            ← Cambiar área
+          </button>
+        </div>
+      </aside>
+
+      {/* Header */}
+      <header style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderBottom: `1px solid rgba(${ac},.1)`, background: "rgba(3,10,6,.97)", flexShrink: 0, zIndex: 10 }}>
+        <button onClick={() => setSideOpen((v) => !v)} aria-label="Menú"
+          style={{ background: "none", border: "none", cursor: "pointer", padding: "5px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
+          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
+          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
+        </button>
+        <span style={{ fontSize: 16, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1, flex: 1 }}>{mentorName}</span>
+        <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>ETAPA 1</span>
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})`, boxShadow: `0 0 7px ${loading ? "#ffa502" : `rgb(${ac})`}`, display: "inline-block", transition: "all .3s" }} />
+      </header>
+
+      {/* Mensajes */}
+      <div style={{ flex: 1, overflow: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 13 }}>
+
+        {/* Estado de carga inicial */}
+        {loading && messages.length === 0 && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 16, opacity: .7, marginTop: "20%" }}>
+            <div style={{ fontSize: 32, color: `rgb(${ac})`, animation: "tp-pulse 1.5s infinite" }}>⬡</div>
+            <div style={{ fontSize: 13, fontFamily: "monospace", color: `rgb(${ac})` }}>Preparando tu mentor...</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              {[0, .2, .4].map((d, i) => (
+                <span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.map((m, i) => (
+          <div key={i} className="tp-msg" style={{ display: "flex", gap: 8, justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-start" }}>
+            {m.role === "assistant" && (
+              <div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0, marginTop: 2 }}>
+                {area?.icon || "⬡"}
+              </div>
+            )}
+            <div style={m.role === "user"
+              ? { maxWidth: "76%", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", borderRadius: "12px 3px 12px 12px", padding: "10px 13px", fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,.78)" }
+              : { maxWidth: "88%", background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "12px 14px" }
+            }>
+              {m.role === "user" ? m.content : <MD text={m.content} ac={ac} />}
+            </div>
+            {m.role === "user" && (
+              <div style={{ width: 27, height: 27, borderRadius: 7, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,.45)", flexShrink: 0, marginTop: 2 }}>U</div>
+            )}
+          </div>
+        ))}
+
+        {/* Indicador de escritura */}
+        {loading && messages.length > 0 && (
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0 }}>
+              {area?.icon || "⬡"}
+            </div>
+            <div style={{ background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "13px 16px", display: "flex", gap: 5, alignItems: "center" }}>
+              {[0, .2, .4].map((d, i) => (
+                <span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Banner de error */}
+      {error && (
+        <div style={{ padding: "9px 15px", background: "rgba(255,80,80,.08)", borderTop: "1px solid rgba(255,80,80,.2)", fontSize: 12, color: "#ff8080", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+          <span>⚠️ {error}</span>
+          <button onClick={() => setError("")} style={{ background: "none", border: "none", color: "rgba(255,80,80,.5)", cursor: "pointer", fontSize: 14 }}>✕</button>
+        </div>
+      )}
+
+      {/* Input */}
+      <div style={{ padding: "11px 14px 13px", borderTop: `1px solid rgba(${ac},.08)`, background: "rgba(3,10,6,.98)", flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 8 }}>
+          
+          <textarea
+            ref={inputRef}
+            rows={1}
+            style={{ 
+              flex: 1, 
+              background: "rgba(4,16,8,.95)", 
+              border: `1px solid rgba(${ac},.14)`, 
+              borderRadius: 10, 
+              padding: "11px 13px", 
+              color: "#c8dfd4", 
+              fontSize: 13, 
+              fontFamily: "'Outfit',sans-serif", 
+              outline: "none", 
+              caretColor: `rgb(${ac})`, 
+              minWidth: 0,
+              resize: "none",
+              minHeight: "42px",
+              maxHeight: "120px",
+              overflowY: "auto",
+              lineHeight: 1.5
+            }}
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+                e.target.style.height = "auto"; 
+              }
+            }}
+            onFocus={(e) => (e.target.style.borderColor = `rgba(${ac},.4)`)}
+            onBlur={(e) => (e.target.style.borderColor = `rgba(${ac},.14)`)}
+            placeholder={loading ? "El mentor está respondiendo..." : "Escribe tu respuesta... (Shift + Enter para salto de línea)"}
+            disabled={loading}
+          />
+
+          <button
+            onClick={send}
+            disabled={loading || !input.trim()}
+            style={{ padding: "11px 15px", borderRadius: 10, border: `1px solid rgba(${ac},.25)`, background: `rgba(${ac},.09)`, color: `rgb(${ac})`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "monospace", flexShrink: 0, opacity: loading || !input.trim() ? .3 : 1, transition: "opacity .2s" }}
+          >
+            ▶
+          </button>
+        </div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,.1)", fontFamily: "monospace", marginTop: 5, textAlign: "center" }}>
+          Enter para enviar · ☰ para ver tu hoja de ruta
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ESTILOS GLOBALES ─────────────────────────────────────────────────────────
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #04090b; }
+  @keyframes tp-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+  @keyframes tp-pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+  @keyframes tp-blink { 0%,80%,100%{opacity:.2;transform:scale(.7)} 40%{opacity:1;transform:scale(1)} }
+  @keyframes tp-in    { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
+  .tp-float { animation: tp-float 3s ease-in-out infinite; }
+  .tp-msg   { animation: tp-in .24s ease both; }
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.07); border-radius: 2px; }
+  button:active { opacity: .7; }
+  textarea:focus { outline: none; }
+`;
