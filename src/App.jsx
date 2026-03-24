@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
 // ─── GROQ API CALL ───────────────────────────────────────────────────────────
-// Lee la key desde localStorage (guardada por el usuario al entrar)
 async function geminiCall(history, systemPrompt) {
   const API_KEY = localStorage.getItem("tp_groq_key");
 
@@ -26,7 +25,7 @@ async function geminiCall(history, systemPrompt) {
     body: JSON.stringify({
       model: "llama-3.3-70b-versatile",
       messages,
-      max_tokens: 1500,
+      max_tokens: 4000,
       temperature: 0.7,
     }),
   });
@@ -81,7 +80,7 @@ Una vez validado el objetivo, eres un chat conversacional activo. Guías en DOS 
 ## 📌 LAS 18 REGLAS DE ORO (RIGOR CON EMPATÍA)
 
 1. **PROGRESIÓN BLOQUEADA:** Celebra los logros, pero mantén el orden. No desbloquees la siguiente tanda hasta que el usuario confirme haber terminado la actual.
-2. 2. **FORMATO DE RECOMENDACIÓN:** Es OBLIGATORIO usar la estructura visual con emojis detallada en la sección "FORMATO EXACTO" más abajo.
+2. **FORMATO DE RECOMENDACIÓN:** Es OBLIGATORIO usar la estructura visual con emojis detallada en la sección "FORMATO EXACTO" más abajo.
 3. **PRIORIDAD GRATUITA:** Cuida el bolsillo del usuario. Solo recomienda pagos si son una inversión transformadora.
 4. **ORDEN LÓGICO:** Construye cimientos sólidos. No dejes que el usuario se abrume con temas avanzados sin saber lo básico.
 5. **REGISTRO DE PROGRESO VISIBLE:** Al inicio de cada tanda, muestra un resumen visual:
@@ -101,7 +100,7 @@ Una vez validado el objetivo, eres un chat conversacional activo. Guías en DOS 
 15. **SUBIDA DE NIVEL TÉCNICO:** Identifica la habilidad reina (ej. Scripting) y usa el bloque 💻 MOMENTO DE SUBIR NIVEL.
 16. **MENTALIDAD ANALÍTICA:** A partir de la Etapa 2, plantea retos con el bloque 🧠 EJERCICIO DE MENTALIDAD ANALÍTICA.
 17. **PANORAMA LABORAL:** Al final de cada etapa, dale un baño de realidad optimista con el bloque 💼 PANORAMA LABORAL.
-18. **CAPACIDAD CONVERSACIONAL:** ¡No eres un robot! Si el usuario te pregunta "No entiendo qué es una API" o "¿Este curso de Udemy es mejor que el que me diste?", detente, responde con detalle, debate con él y, cuando la duda esté resuelta, retoma la hoja de ruta.
+18. **CAPACIDAD CONVERSACIONAL:** ¡No eres un robot! Si el usuario te pregunta "No entiendo qué es una API", detente, responde con detalle, debate con él y, cuando la duda esté resuelta, retoma la hoja de ruta.
 
 ---
 
@@ -136,16 +135,16 @@ No generes la primera tanda sin conocer estas respuestas.
 
 // ─── ÁREAS DISPONIBLES ────────────────────────────────────────────────────────
 const AREAS = [
-  { key: "cyber",      icon: "🛡️", label: "Ciberseguridad / SOC",   color: "0,220,120",   goal: "Quiero ser analista de ciberseguridad SOC y especializarme en Blue Team y Cloud Security" },
-  { key: "frontend",   icon: "⚛️", label: "Front-end Developer",     color: "97,218,251",  goal: "Quiero ser desarrollador front-end, dominar React y el ecosistema moderno de JavaScript" },
-  { key: "devops",     icon: "⚙️", label: "DevOps / SRE",            color: "255,160,50",  goal: "Quiero trabajar en DevOps, aprender CI/CD, Kubernetes, Terraform y cultura SRE" },
-  { key: "networking", icon: "🌐", label: "Redes / Networking",       color: "50,160,255",  goal: "Quiero certificarme en redes, empezar con CCNA y llegar a roles de Network Engineer" },
-  { key: "sysadmin",   icon: "🖥️", label: "Sysadmin / Linux",         color: "255,200,50",  goal: "Quiero ser administrador de sistemas Linux, gestionar servidores y automatizar con scripting" },
-  { key: "ai",         icon: "🤖", label: "IA / Machine Learning",    color: "180,100,255", goal: "Quiero aprender inteligencia artificial y machine learning, desde Python hasta modelos en producción" },
-  { key: "cloud",      icon: "☁️", label: "Cloud Engineer",           color: "100,190,255", goal: "Quiero ser Cloud Engineer, certificarme en AWS y gestionar infraestructura en la nube" },
-  { key: "backend",    icon: "🗄️", label: "Backend / APIs",           color: "255,100,150", goal: "Quiero ser desarrollador backend, construir APIs robustas y aprender bases de datos" },
-  { key: "mobile",     icon: "📱", label: "Mobile Developer",         color: "255,140,80",  goal: "Quiero desarrollar apps móviles, aprender React Native o Flutter y publicar en las tiendas" },
-  { key: "pentest",    icon: "🔐", label: "Pentesting / Red Team",    color: "255,80,80",   goal: "Quiero ser pentester y especialista en Red Team, aprender hacking ético y CTFs" },
+  { key: "cyber",      icon: "🛡️", label: "Ciberseguridad",   color: "0,220,120",   goal: "Quiero ser analista de ciberseguridad SOC y especializarme en Blue Team" },
+  { key: "frontend",   icon: "⚛️", label: "Front-end Dev",     color: "97,218,251",  goal: "Quiero ser desarrollador front-end, dominar React y el ecosistema moderno" },
+  { key: "devops",     icon: "⚙️", label: "DevOps / SRE",            color: "255,160,50",  goal: "Quiero trabajar en DevOps, aprender CI/CD, Kubernetes y cultura SRE" },
+  { key: "networking", icon: "🌐", label: "Redes",       color: "50,160,255",  goal: "Quiero certificarme en redes, empezar con CCNA y llegar a Network Engineer" },
+  { key: "sysadmin",   icon: "🖥️", label: "Sysadmin / Linux",         color: "255,200,50",  goal: "Quiero ser administrador de sistemas Linux y gestionar servidores" },
+  { key: "ai",         icon: "🤖", label: "IA / Machine Learning",    color: "180,100,255", goal: "Quiero aprender IA y machine learning, desde Python hasta modelos" },
+  { key: "cloud",      icon: "☁️", label: "Cloud Engineer",           color: "100,190,255", goal: "Quiero ser Cloud Engineer, certificarme en AWS y gestionar nube" },
+  { key: "backend",    icon: "🗄️", label: "Backend / APIs",           color: "255,100,150", goal: "Quiero ser desarrollador backend y construir APIs robustas" },
+  { key: "mobile",     icon: "📱", label: "Mobile Dev",         color: "255,140,80",  goal: "Quiero desarrollar apps móviles, aprender React Native o Flutter" },
+  { key: "pentest",    icon: "🔐", label: "Pentesting",    color: "255,80,80",   goal: "Quiero ser pentester, aprender hacking ético y CTFs" },
 ];
 
 const DEFAULT_PHASES = [
@@ -196,46 +195,23 @@ function fmt(text, ac) {
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
 export default function App() {
-  // ── NUEVO: estado de la API key ──────────────────────────────────────────
+  // ── ESTADOS DE LA API KEY ──
   const [keyInput,   setKeyInput]   = useState("");
   const [keyError,   setKeyError]   = useState("");
   const [keyLoading, setKeyLoading] = useState(false);
   const keyRef = useRef(null);
 
-  // Determina la pantalla inicial: "apikey" si no hay key guardada, "welcome" si ya la hay
-  const [screen, setScreen] = useState(
-    () => localStorage.getItem("tp_groq_key") ? "welcome" : "apikey"
-  );
+  // ── ESTADOS DE GESTIÓN DE CHATS (SLOTS) ──
+  const [savedChats, setSavedChats] = useState([]);
+  const [currentChatId, setCurrentChatId] = useState(null);
 
-  useEffect(() => {
-    if (screen === "apikey") keyRef.current?.focus();
-  }, [screen]);
+  // Determina la pantalla inicial
+  const [screen, setScreen] = useState(() => {
+    if (!localStorage.getItem("tp_groq_key")) return "apikey";
+    return "mainmenu"; // Por defecto al menú principal si hay key
+  });
 
-  // Valida la key con una llamada de prueba antes de guardarla
-  const saveKey = useCallback(async () => {
-    const k = keyInput.trim();
-    if (!k) return;
-    setKeyLoading(true);
-    setKeyError("");
-    try {
-      // Guardamos temporalmente para que geminiCall la use
-      localStorage.setItem("tp_groq_key", k);
-      await geminiCall(
-        [{ role: "user", content: "Responde solo: OK" }],
-        "Eres un asistente. Responde solo la palabra OK."
-      );
-      // Si no lanzó error, la key es válida — nos quedamos con ella
-      setScreen("welcome");
-    } catch (e) {
-      // Si falló, borramos la key inválida
-      localStorage.removeItem("tp_groq_key");
-      setKeyError("Key inválida o sin acceso. Verifica que empiece con gsk_ y vuelve a intentarlo.");
-    } finally {
-      setKeyLoading(false);
-    }
-  }, [keyInput]);
-  // ── FIN NUEVO ────────────────────────────────────────────────────────────
-
+  // ── ESTADOS DEL CHAT ACTUAL ──
   const [area,        setArea]        = useState(null);
   const [ac,          setAc]          = useState("0,220,120");
   const [messages,    setMessages]    = useState([]);
@@ -253,16 +229,114 @@ export default function App() {
   const scrollBottom = () =>
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
 
-  // Inicia el chat con el área elegida
+  // ── EFECTO: Cargar chats guardados al inicio ──
+  useEffect(() => {
+    const chats = localStorage.getItem("tp_saved_chats");
+    if (chats) {
+      setSavedChats(JSON.parse(chats));
+    }
+  }, []);
+
+  // ── EFECTO: Guardar chats automáticamente cuando cambian ──
+  useEffect(() => {
+    if (screen !== "apikey") {
+      localStorage.setItem("tp_saved_chats", JSON.stringify(savedChats));
+    }
+  }, [savedChats, screen]);
+
+  // ── EFECTO: Foco en input de API Key ──
+  useEffect(() => {
+    if (screen === "apikey") keyRef.current?.focus();
+  }, [screen]);
+
+  // ── FUNCIÓN: Guardar y Validar API Key ──
+  const saveKey = useCallback(async () => {
+    const k = keyInput.trim();
+    if (!k) return;
+    setKeyLoading(true);
+    setKeyError("");
+    try {
+      localStorage.setItem("tp_groq_key", k);
+      await geminiCall(
+        [{ role: "user", content: "Responde solo: OK" }],
+        "Eres un asistente. Responde solo la palabra OK."
+      );
+      setScreen("mainmenu");
+    } catch (e) {
+      localStorage.removeItem("tp_groq_key");
+      setKeyError("Key inválida. Verifica que empiece con gsk_ y vuelve a intentarlo.");
+    } finally {
+      setKeyLoading(false);
+    }
+  }, [keyInput]);
+
+  // ── FUNCIÓN: Cargar un chat existente ──
+  const loadChat = useCallback((chatId) => {
+    const chat = savedChats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    setCurrentChatId(chat.id);
+    setArea(chat.area);
+    setAc(chat.ac);
+    setMessages(chat.messages);
+    setMentorName(chat.mentorName);
+    setGoalText(chat.goalText);
+    setScreen("chat");
+    setSideOpen(false);
+    scrollBottom();
+  }, [savedChats]);
+
+  // ── FUNCIÓN: Crear un nuevo chat (Slot) ──
+  const createNewChat = useCallback(() => {
+    if (savedChats.length >= 3) {
+      alert("⚠️ Has alcanzado el límite de 3 rutas guardadas. Elimina una para empezar otra.");
+      return;
+    }
+    setCurrentChatId(null);
+    setMessages([]);
+    setArea(null);
+    setAc("0,220,120");
+    setCustomGoal("");
+    setScreen("welcome");
+  }, [savedChats.length]);
+
+  // ── FUNCIÓN: Eliminar un chat ──
+  const deleteChat = useCallback((chatId, e) => {
+    e.stopPropagation(); // Evita abrir el chat al hacer clic en borrar
+    if (window.confirm("¿Estás seguro de que quieres eliminar esta ruta para siempre?")) {
+      setSavedChats(prev => prev.filter(c => c.id !== chatId));
+      if (currentChatId === chatId) {
+        setScreen("mainmenu");
+        setCurrentChatId(null);
+      }
+    }
+  }, [currentChatId]);
+
+  // ── FUNCIÓN: Inicia el chat con el área elegida ──
   const startArea = useCallback(async (selectedArea, customText = "") => {
     const goal = customText || selectedArea.goal;
+    
+    // Crear objeto de chat vacío
+    const newChatId = Date.now().toString(); // ID único basado en tiempo
+    const newChatObject = {
+      id: newChatId,
+      area: selectedArea,
+      ac: selectedArea.color,
+      goalText: goal,
+      mentorName: "TechPathAI",
+      messages: [],
+      createdAt: new Date().toISOString()
+    };
+
+    // Actualizar estados locales
     setArea(selectedArea);
     setAc(selectedArea.color);
     setGoalText(goal);
+    setMessages([]);
+    setCurrentChatId(newChatId);
     setScreen("chat");
     setLoading(true);
     setError("");
-    setMessages([]);
 
     try {
       const firstMsg = await geminiCall(
@@ -271,18 +345,33 @@ export default function App() {
       );
 
       const match = firstMsg.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
-      if (match) setMentorName(match[1]);
-      setMessages([{ role: "assistant", content: firstMsg }]);
+      const finalMentorName = match ? match[1] : "TechPathAI";
+      
+      setMentorName(finalMentorName);
+      const initialMessages = [{ role: "assistant", content: firstMsg }];
+      setMessages(initialMessages);
+
+      // Guardar el chat completo en la lista
+      setSavedChats(prev => [
+        { ...newChatObject, mentorName: finalMentorName, messages: initialMessages },
+        ...prev
+      ]);
+
     } catch (e) {
       setError(e.message);
-      setMessages([{ role: "assistant", content: `⚠️ ${e.message}` }]);
+      const initialMessages = [{ role: "assistant", content: `⚠️ ${e.message}` }];
+      setMessages(initialMessages);
+      setSavedChats(prev => [
+        { ...newChatObject, messages: initialMessages },
+        ...prev
+      ]);
     } finally {
       setLoading(false);
       scrollBottom();
     }
   }, []);
 
-  // Enviar mensaje en el chat
+  // ── FUNCIÓN: Enviar mensaje en el chat ──
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -292,187 +381,170 @@ export default function App() {
     setMessages(next);
     setLoading(true);
     scrollBottom();
+
+    // Actualizar temporalmente el chat en la lista con el mensaje del usuario
+    setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: next } : c));
+
     try {
       const reply = await geminiCall(next, getSystemPrompt(goalText));
-      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      const finalMessages = [...next, { role: "assistant", content: reply }];
+      setMessages(finalMessages);
+      
+      // Guardar la respuesta de la IA en la lista
+      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: finalMessages } : c));
     } catch (e) {
       setError(e.message);
-      setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${e.message}` }]);
+      const finalMessages = [...next, { role: "assistant", content: `⚠️ ${e.message}` }];
+      setMessages(finalMessages);
+      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: finalMessages } : c));
     } finally {
       setLoading(false);
       scrollBottom();
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [input, loading, messages, goalText]);
+  }, [input, loading, messages, goalText, currentChatId]);
 
   // ── NUEVA PANTALLA: API KEY ───────────────────────────────────────────────
   if (screen === "apikey") return (
     <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <style>{CSS}</style>
       <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 28 }}>
-
-        {/* Logo */}
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ fontSize: 36 }} className="tp-float">⬡</div>
           <h1 style={{ fontSize: 22, fontWeight: 800, fontFamily: "monospace", color: "#00dc78", margin: 0, letterSpacing: 1 }}>TechPath</h1>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,.3)", margin: 0 }}>AI Career Mentor</p>
         </div>
-
-        {/* Card */}
         <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 16, padding: "28px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
           <div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: "0 0 6px", fontFamily: "monospace" }}>
-              Ingresa tu API Key de Groq
-            </h2>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,.32)", margin: 0, lineHeight: 1.6 }}>
-              TechPath usa tu propia key para funcionar. Es gratuita y se guarda solo en tu navegador — nunca en ningún servidor.
-            </p>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: "0 0 6px", fontFamily: "monospace" }}>Ingresa tu API Key de Groq</h2>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,.32)", margin: 0, lineHeight: 1.6 }}>TechPath usa tu propia key. Es gratuita y se guarda solo en tu navegador.</p>
           </div>
-
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            <label style={{ fontSize: 10, fontFamily: "monospace", color: "rgba(255,255,255,.25)", letterSpacing: 1 }}>
-              API KEY DE GROQ
-            </label>
-            <input
-              ref={keyRef}
-              type="password"
-              style={{
-                background: "rgba(255,255,255,.04)",
-                border: `1px solid ${keyError ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.1)"}`,
-                borderRadius: 10,
-                padding: "12px 14px",
-                color: "#e8f4ec",
-                fontSize: 14,
-                fontFamily: "monospace",
-                outline: "none",
-                letterSpacing: 1,
-                transition: "border .2s",
-              }}
-              value={keyInput}
-              onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }}
-              onKeyDown={(e) => e.key === "Enter" && saveKey()}
-              onFocus={(e) => e.target.style.borderColor = "rgba(0,220,120,.4)"}
-              onBlur={(e) => e.target.style.borderColor = keyError ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.1)"}
-              placeholder="gsk_..."
-              disabled={keyLoading}
-            />
-            {keyError && (
-              <p style={{ fontSize: 12, color: "#ff8080", margin: 0, lineHeight: 1.5 }}>{keyError}</p>
-            )}
+            <label style={{ fontSize: 10, fontFamily: "monospace", color: "rgba(255,255,255,.25)", letterSpacing: 1 }}>API KEY DE GROQ</label>
+            <input ref={keyRef} type="password" style={{ background: "rgba(255,255,255,.04)", border: `1px solid ${keyError ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.1)"}`, borderRadius: 10, padding: "12px 14px", color: "#e8f4ec", fontSize: 14, fontFamily: "monospace", outline: "none", letterSpacing: 1, transition: "border .2s" }} value={keyInput} onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }} onKeyDown={(e) => e.key === "Enter" && saveKey()} placeholder="gsk_..." disabled={keyLoading} />
+            {keyError && <p style={{ fontSize: 12, color: "#ff8080", margin: 0, lineHeight: 1.5 }}>{keyError}</p>}
           </div>
-
-          <button
-            onClick={saveKey}
-            disabled={!keyInput.trim() || keyLoading}
-            style={{
-              padding: "13px",
-              borderRadius: 11,
-              border: "none",
-              background: !keyInput.trim() || keyLoading
-                ? "rgba(255,255,255,.05)"
-                : "linear-gradient(135deg,#00dc78,#00aa55)",
-              color: !keyInput.trim() || keyLoading ? "rgba(255,255,255,.2)" : "#030a06",
-              cursor: !keyInput.trim() || keyLoading ? "default" : "pointer",
-              fontSize: 14,
-              fontWeight: 700,
-              fontFamily: "monospace",
-              transition: "all .2s",
-            }}
-          >
+          <button onClick={saveKey} disabled={!keyInput.trim() || keyLoading} style={{ padding: "13px", borderRadius: 11, border: "none", background: !keyInput.trim() || keyLoading ? "rgba(255,255,255,.05)" : "linear-gradient(135deg,#00dc78,#00aa55)", color: !keyInput.trim() || keyLoading ? "rgba(255,255,255,.2)" : "#030a06", cursor: !keyInput.trim() || keyLoading ? "default" : "pointer", fontSize: 14, fontWeight: 700, fontFamily: "monospace", transition: "all .2s" }}>
             {keyLoading ? "Verificando..." : "Acceder →"}
           </button>
-
           <div style={{ borderTop: "1px solid rgba(255,255,255,.06)", paddingTop: 14 }}>
-            <p style={{ fontSize: 12, color: "rgba(255,255,255,.22)", margin: 0, lineHeight: 1.7 }}>
-              ¿No tienes key? Crea una gratis en{" "}
-              <a
-                href="https://console.groq.com"
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: "#00dc78", textDecoration: "none" }}
-              >
-                console.groq.com
-              </a>
-              {" "}→ API Keys → Create API Key
-            </p>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,.22)", margin: 0, lineHeight: 1.7 }}>¿No tienes key? Crea una gratis en <a href="https://console.groq.com" target="_blank" rel="noreferrer" style={{ color: "#00dc78", textDecoration: "none" }}>console.groq.com</a></p>
           </div>
         </div>
       </div>
     </div>
   );
-  // ── FIN NUEVA PANTALLA ───────────────────────────────────────────────────
 
-  // ── WELCOME SCREEN ────────────────────────────────────────────────────────
-  if (screen === "welcome") return (
-    <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", alignItems: "center" }}>
+  // ── MODIFICACIÓN 2: INTERFAZ DE MENÚ PRINCIPAL ─────────────────────────────
+  if (screen === "mainmenu") return (
+    <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column" }}>
       <style>{CSS}</style>
-
       <header style={{ width: "100%", padding: "15px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: 20, color: "#00dc78" }}>⬡</span>
         <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "#00dc78", letterSpacing: 1 }}>TechPath</span>
         <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginLeft: 2 }}>AI Career Mentor</span>
       </header>
 
-      <div style={{ width: "100%", maxWidth: 660, padding: "34px 18px 60px", display: "flex", flexDirection: "column", gap: 26 }}>
-
-        {/* Hero */}
-        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 38, lineHeight: 1 }} className="tp-float">🎯</div>
-          <h1 style={{ fontSize: "clamp(20px,5vw,30px)", fontWeight: 800, fontFamily: "monospace", color: "#fff", margin: 0, lineHeight: 1.25 }}>
-            Tu ruta en tecnología,<br />
-            <span style={{ color: "#00dc78" }}>diseñada por IA.</span>
+      <div style={{ width: "100%", maxWidth: 800, margin: "0 auto", padding: "40px 20px 60px", display: "flex", flexDirection: "column", gap: 35 }}>
+        
+        {/* Saludo y Pregunta */}
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 10 }}>
+          <h1 style={{ fontSize: "clamp(24px,6vw,36px)", fontWeight: 800, fontFamily: "monospace", color: "#fff", margin: 0 }}>
+            ¿Qué quieres hacer hoy?
           </h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", margin: "0 auto", lineHeight: 1.65, maxWidth: 440 }}>
-            Elige tu área o describe tu objetivo. Te asignaré un mentor personalizado con hoja de ruta completa y guía paso a paso.
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", margin: 0 }}>
+            Continúa una ruta existente o empieza una nueva aventura técnica.
           </p>
         </div>
 
-        {/* Input libre */}
+        {/* Sección de Slots (Guardados) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 10, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <h2 style={{ fontSize: 11, fontFamily: "monospace", color: "rgba(255,255,255,.3)", letterSpacing: 2, fontWeight: 700, margin: 0 }}>TUS HOJAS DE RUTA</h2>
+            <span style={{ fontSize: 11, color: savedChats.length >= 3 ? "#ff8080" : "rgba(255,255,255,.2)", fontWeight: 600, fontFamily: "monospace" }}>
+              {savedChats.length} / 3 slots usados
+            </span>
+          </div>
+
+          {/* Lista de Chats (Slots) */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(230px,1fr))", gap: 15 }}>
+            
+            {savedChats.map((chat) => (
+              <div key={chat.id} 
+                onClick={() => loadChat(chat.id)}
+                style={{ background: "rgba(255,255,255,.02)", border: `1px solid rgba(${chat.ac},.12)`, borderRadius: 16, padding: "20px", display: "flex", flexDirecton: "column", gap: 12, cursor: "pointer", transition: "all .2s", position: "relative" }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = `rgba(${chat.ac},.4)`; e.currentTarget.style.background = `rgba(${chat.ac},.05)`; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = `rgba(${chat.ac},.12)`; e.currentTarget.style.background = "rgba(255,255,255,.02)"; e.currentTarget.style.transform = "translateY(0)"; }}
+              >
+                {/* Cabecera del Slot */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 24 }}>{chat.area.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>{chat.mentorName}</div>
+                    <div style={{ fontSize: 11, color: `rgb(${chat.ac})`, fontFamily: "monospace" }}>{chat.area.label}</div>
+                  </div>
+                  {/* Botón Eliminar (Modificación 1) */}
+                  <button onClick={(e) => deleteChat(chat.id, e)} style={{ background: "none", border: "none", color: "rgba(255,80,80,.4)", cursor: "pointer", fontSize: 14, padding: 5, borderRadius: 5 }} title="Eliminar ruta">✕</button>
+                </div>
+                
+                {/* Objetivo Truncado */}
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,.4)", lineHeight: 1.5, margin: "5px 0 0", fontStyle: "italic", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  "{chat.goalText}"
+                </p>
+
+                {/* Info adicional */}
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", fontFamily: "monospace", marginTop: "auto", borderTop: "1px solid rgba(255,255,255,.05)", paddingTop: 8 }}>
+                  Actualizado: {new Date(chat.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+
+            {/* Slot Vacío / Botón Nueva Ruta */}
+            {savedChats.length < 3 && (
+              <button 
+                onClick={createNewChat}
+                style={{ background: "transparent", border: "2px dashed rgba(255,255,255,.07)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "rgba(255,255,255,.2)", cursor: "pointer", minHeight: 140, transition: "all .2s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(0,220,120,.2)"; e.currentTarget.style.color = "#00dc78"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,.07)"; e.currentTarget.style.color = "rgba(255,255,255,.2)"; }}
+              >
+                <span style={{ fontSize: 26 }}>⊕</span>
+                <span style={{ fontSize: 12, fontWeight: 600, fontFamily: "monospace" }}>Nueva Ruta</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── WELCOME SCREEN (Modificada con botón volver) ───────────────────────────
+  if (screen === "welcome") return (
+    <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <style>{CSS}</style>
+      <header style={{ width: "100%", padding: "15px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Modificación 1: Botón Volver */}
+        <button onClick={() => setScreen("mainmenu")} style={{ background: "none", border: "none", color: "rgba(255,255,255,.3)", cursor: "pointer", fontSize: 16, marginRight: 5 }}>←</button>
+        <span style={{ fontSize: 20, color: "#00dc78" }}>⬡</span>
+        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "#00dc78", letterSpacing: 1 }}>TechPath</span>
+      </header>
+      <div style={{ width: "100%", maxWidth: 660, padding: "34px 18px 60px", display: "flex", flexDirection: "column", gap: 26 }}>
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 38, lineHeight: 1 }} className="tp-float">🎯</div>
+          <h1 style={{ fontSize: "clamp(20px,5vw,30px)", fontWeight: 800, fontFamily: "monospace", color: "#fff", margin: 0, lineHeight: 1.25 }}>Crear nueva ruta</h1>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", margin: "0 auto", lineHeight: 1.65, maxWidth: 440 }}>Describe tu objetivo técnico. Te asignaré un mentor con hoja de ruta completa.</p>
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <textarea
-            rows={3}
-            style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "13px 15px", color: "#e8f4ec", fontSize: 14, fontFamily: "'Outfit',sans-serif", resize: "none", outline: "none", lineHeight: 1.6, boxSizing: "border-box" }}
-            value={customGoal}
-            onChange={(e) => setCustomGoal(e.target.value)}
-            onFocus={(e) => (e.target.style.borderColor = "rgba(0,220,120,.4)")}
-            onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.09)")}
-            placeholder="Ej: Quiero ser pentester y aprender hacking ético desde cero..."
-          />
-          <button
-            onClick={() => {
-              if (!customGoal.trim()) return;
-              const custom = { key: "custom", icon: "🎯", label: "Objetivo personalizado", color: "0,220,120", goal: customGoal.trim() };
-              startArea(custom, customGoal.trim());
-            }}
-            disabled={!customGoal.trim()}
-            style={{ padding: "13px", borderRadius: 12, border: "none", background: customGoal.trim() ? "linear-gradient(135deg,#00dc78,#00aa55)" : "rgba(255,255,255,0.05)", color: customGoal.trim() ? "#030a06" : "rgba(255,255,255,0.2)", cursor: customGoal.trim() ? "pointer" : "default", fontSize: 14, fontWeight: 700, fontFamily: "monospace", transition: "all .2s" }}
-          >
-            Crear mi ruta personalizada →
+          <textarea rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "13px 15px", color: "#e8f4ec", fontSize: 14, fontFamily: "'Outfit',sans-serif", resize: "none", outline: "none", lineHeight: 1.6, boxSizing: "border-box" }} value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} placeholder="Ej: Quiero ser pentester y aprender hacking ético..." />
+          <button onClick={() => startArea({ key: "custom", icon: "🎯", label: "Personalizado", color: "0,220,120" }, customGoal.trim())} disabled={!customGoal.trim()} style={{ padding: "13px", borderRadius: 12, border: "none", background: customGoal.trim() ? "linear-gradient(135deg,#00dc78,#00aa55)" : "rgba(255,255,255,0.05)", color: customGoal.trim() ? "#030a06" : "rgba(255,255,255,.2)", cursor: customGoal.trim() ? "pointer" : "default", fontSize: 14, fontWeight: 700, fontFamily: "monospace", transition: "all .2s" }}>
+            Crear mi ruta →
           </button>
         </div>
-
-        {/* Divider */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
-          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", fontFamily: "monospace", whiteSpace: "nowrap" }}>O ELIGE UN ÁREA</span>
-          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
-        </div>
-
-        {/* Grid de áreas */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} /><span style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", fontFamily: "monospace" }}>O ELIGE UN ÁREA</span><div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} /></div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 9 }}>
           {AREAS.map((a) => (
-            <button
-              key={a.key}
-              onClick={() => startArea(a)}
-              style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 12px", borderRadius: 13, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", cursor: "pointer", textAlign: "left", color: "inherit", fontFamily: "'Outfit',sans-serif", transition: "all .18s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = `rgba(${a.color},.4)`; e.currentTarget.style.background = `rgba(${a.color},.06)`; e.currentTarget.style.transform = "translateY(-2px)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.transform = "translateY(0)"; }}
-            >
+            <button key={a.key} onClick={() => startArea(a)} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 12px", borderRadius: 13, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", cursor: "pointer", textAlign: "left", color: "inherit", fontFamily: "'Outfit',sans-serif", transition: "all .18s" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = `rgba(${a.color},.4)`; e.currentTarget.style.background = `rgba(${a.color},.06)`; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.transform = "translateY(0)"; }}>
               <span style={{ fontSize: 24 }}>{a.icon}</span>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.75)", lineHeight: 1.3 }}>{a.label}</div>
-                <div style={{ fontSize: 10, color: `rgba(${a.color},.7)`, marginTop: 3, fontFamily: "monospace" }}>Ver ruta →</div>
-              </div>
+              <div><div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.75)", lineHeight: 1.3 }}>{a.label}</div><div style={{ fontSize: 10, color: `rgba(${a.color},.7)`, marginTop: 3, fontFamily: "monospace" }}>Crear →</div></div>
             </button>
           ))}
         </div>
@@ -485,189 +557,56 @@ export default function App() {
     <div style={{ height: "100vh", background: "#030a06", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
       <style>{CSS}</style>
 
-      {/* Overlay sidebar móvil */}
-      {sideOpen && (
-        <div onClick={() => setSideOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", zIndex: 40, backdropFilter: "blur(3px)" }} />
-      )}
+      {sideOpen && <div onClick={() => setSideOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", zIndex: 40, backdropFilter: "blur(3px)" }} />}
 
-      {/* Sidebar */}
+      {/* Sidebar (Modificación 3) */}
       <aside style={{ position: "fixed", top: 0, left: 0, bottom: 0, width: 230, background: "#040e07", borderRight: `1px solid rgba(${ac},.13)`, display: "flex", flexDirection: "column", zIndex: 50, transition: "transform .27s cubic-bezier(.4,0,.2,1)", transform: sideOpen ? "translateX(0)" : "translateX(-100%)", overflowY: "auto" }}>
-
+        
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "15px 14px 13px", borderBottom: `1px solid rgba(${ac},.08)` }}>
           <span style={{ fontSize: 18, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
           <span style={{ flex: 1, fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1 }}>{mentorName}</span>
           <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.22)", fontSize: 15, cursor: "pointer", padding: 4 }}>✕</button>
         </div>
 
+        {/* MODIFICACIÓN 3: Botón Menú Principal */}
+        <div style={{ padding: "12px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
+          <button onClick={() => setScreen("mainmenu")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,.05)", background: "rgba(255,255,255,.03)", color: "rgba(255,255,255,.7)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+            <span>🧭</span> Menú Principal
+          </button>
+        </div>
+
         <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
           <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>HOJA DE RUTA</div>
           {DEFAULT_PHASES.map((ph, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, marginBottom: 3, border: `1px solid ${i === 0 ? `rgba(${ac},.2)` : "transparent"}`, background: i === 0 ? `rgba(${ac},.05)` : "transparent" }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? `rgb(${ac})` : `rgba(${ac},.12)`, flexShrink: 0, boxShadow: i === 0 ? `0 0 6px rgb(${ac})` : "none" }} />
-              <span style={{ fontSize: 12, color: i === 0 ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.14)", flex: 1, fontWeight: i === 0 ? 600 : 400 }}>{ph}</span>
-              {i > 0 && <span style={{ fontSize: 11, opacity: .22 }}>🔒</span>}
-              {i === 0 && <span style={{ fontSize: 11, color: `rgb(${ac})` }}>→</span>}
-            </div>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, marginBottom: 3, border: `1px solid ${i === 0 ? `rgba(${ac},.2)` : "transparent"}`, background: i === 0 ? `rgba(${ac},.05)` : "transparent" }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? `rgb(${ac})` : `rgba(${ac},.12)`, flexShrink: 0, boxShadow: i === 0 ? `0 0 6px rgb(${ac})` : "none" }} /><span style={{ fontSize: 12, color: i === 0 ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.14)", flex: 1, fontWeight: i === 0 ? 600 : 400 }}>{ph}</span>{i > 0 && <span style={{ fontSize: 11, opacity: .22 }}>🔒</span>}{i === 0 && <span style={{ fontSize: 11, color: `rgb(${ac})` }}>→</span>}</div>
           ))}
         </div>
-
-        <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
-          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 9 }}>PROGRESO</div>
-          {[["Paths completados", "0", `rgb(${ac})`], ["En curso", "0", "#ffa502"], ["Certificaciones", "0 🏆", "#7ee8fa"]].map(([l, v, c]) => (
-            <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>{l}</span>
-              <span style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: c }}>{v}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ padding: "13px 14px" }}>
-          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>TU OBJETIVO</div>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,.28)", lineHeight: 1.55, margin: 0, fontStyle: "italic" }}>{goalText}</p>
-        </div>
-
+        <div style={{ padding: "13px 14px" }}><div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>TU OBJETIVO</div><p style={{ fontSize: 11, color: "rgba(255,255,255,.28)", lineHeight: 1.55, margin: 0, fontStyle: "italic" }}>{goalText}</p></div>
+        
+        {/* Modificación 1: Botón Eliminar esta ruta dentro del chat */}
         <div style={{ padding: "12px 14px", marginTop: "auto", borderTop: `1px solid rgba(${ac},.06)` }}>
-          <button
-            onClick={() => { setScreen("welcome"); setMessages([]); setSideOpen(false); setError(""); setCustomGoal(""); }}
-            style={{ width: "100%", padding: "9px", borderRadius: 8, border: "1px solid rgba(255,255,255,.07)", background: "transparent", color: "rgba(255,255,255,.28)", cursor: "pointer", fontSize: 11, fontFamily: "monospace", transition: "color .2s" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.7)")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,.28)")}
-          >
-            ← Cambiar área
+          <button onClick={(e) => deleteChat(currentChatId, e)} style={{ width: "100%", padding: "9px", borderRadius: 8, border: "1px solid rgba(255,80,80,.15)", background: "rgba(255,80,80,.03)", color: "rgba(255,80,80,.6)", cursor: "pointer", fontSize: 11, fontWeight: 600, transition: "all .2s" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,80,80,.1)"; e.currentTarget.style.color = "rgba(255,80,80,.9)"; }}>
+            ✕ Eliminar esta ruta
           </button>
         </div>
       </aside>
 
       {/* Header */}
-      <header style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderBottom: `1px solid rgba(${ac},.1)`, background: "rgba(3,10,6,.97)", flexShrink: 0, zIndex: 10 }}>
-        <button onClick={() => setSideOpen((v) => !v)} aria-label="Menú"
-          style={{ background: "none", border: "none", cursor: "pointer", padding: "5px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
-          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
-          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} />
-        </button>
-        <span style={{ fontSize: 16, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1, flex: 1 }}>{mentorName}</span>
-        <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>ETAPA 1</span>
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})`, boxShadow: `0 0 7px ${loading ? "#ffa502" : `rgb(${ac})`}`, display: "inline-block", transition: "all .3s" }} />
-      </header>
+      <header style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderBottom: `1px solid rgba(${ac},.1)`, background: "rgba(3,10,6,.97)", flexShrink: 0, zIndex: 10 }}><button onClick={() => setSideOpen((v) => !v)} aria-label="Menú" style={{ background: "none", border: "none", cursor: "pointer", padding: "5px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /><span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})`, borderRadius: 1 }} /></button><span style={{ fontSize: 16, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span><span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1, flex: 1 }}>{mentorName}</span><span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>ETAPA 1</span><span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})`, boxShadow: `0 0 7px ${loading ? "#ffa502" : `rgb(${ac})`}`, display: "inline-block", transition: "all .3s" }} /></header>
 
       {/* Mensajes */}
       <div style={{ flex: 1, overflow: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 13 }}>
-
-        {/* Estado de carga inicial */}
-        {loading && messages.length === 0 && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 16, opacity: .7, marginTop: "20%" }}>
-            <div style={{ fontSize: 32, color: `rgb(${ac})`, animation: "tp-pulse 1.5s infinite" }}>⬡</div>
-            <div style={{ fontSize: 13, fontFamily: "monospace", color: `rgb(${ac})` }}>Preparando tu mentor...</div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {[0, .2, .4].map((d, i) => (
-                <span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {messages.map((m, i) => (
-          <div key={i} className="tp-msg" style={{ display: "flex", gap: 8, justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-start" }}>
-            {m.role === "assistant" && (
-              <div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0, marginTop: 2 }}>
-                {area?.icon || "⬡"}
-              </div>
-            )}
-            <div style={m.role === "user"
-              ? { maxWidth: "76%", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", borderRadius: "12px 3px 12px 12px", padding: "10px 13px", fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,.78)" }
-              : { maxWidth: "88%", background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "12px 14px" }
-            }>
-              {m.role === "user" ? m.content : <MD text={m.content} ac={ac} />}
-            </div>
-            {m.role === "user" && (
-              <div style={{ width: 27, height: 27, borderRadius: 7, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,.45)", flexShrink: 0, marginTop: 2 }}>U</div>
-            )}
-          </div>
-        ))}
-
-        {/* Indicador de escritura */}
-        {loading && messages.length > 0 && (
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0 }}>
-              {area?.icon || "⬡"}
-            </div>
-            <div style={{ background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "13px 16px", display: "flex", gap: 5, alignItems: "center" }}>
-              {[0, .2, .4].map((d, i) => (
-                <span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />
-              ))}
-            </div>
-          </div>
-        )}
-
+        {loading && messages.length === 0 && (<div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: 16, opacity: .7, marginTop: "20%" }}><div style={{ fontSize: 32, color: `rgb(${ac})`, animation: "tp-pulse 1.5s infinite" }}>⬡</div><div style={{ fontSize: 13, fontFamily: "monospace", color: `rgb(${ac})` }}>Preparando tu mentor...</div><div style={{ display: "flex", gap: 6 }}>{[0, .2, .4].map((d, i) => (<span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />))}</div></div>)}
+        {messages.map((m, i) => (<div key={i} className="tp-msg" style={{ display: "flex", gap: 8, justifyContent: m.role === "user" ? "flex-end" : "flex-start", alignItems: "flex-start" }}>{m.role === "assistant" && (<div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0, marginTop: 2 }}>{area?.icon || "⬡"}</div>)}<div style={m.role === "user" ? { maxWidth: "76%", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", borderRadius: "12px 3px 12px 12px", padding: "10px 13px", fontSize: 13, lineHeight: 1.6, color: "rgba(255,255,255,.78)" } : { maxWidth: "88%", background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "12px 14px" }}>{m.role === "user" ? m.content : <MD text={m.content} ac={ac} />}</div>{m.role === "user" && (<div style={{ width: 27, height: 27, borderRadius: 7, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,.45)", flexShrink: 0, marginTop: 2 }}>U</div>)}</div>))}
+        {loading && messages.length > 0 && (<div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}><div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0 }}>{area?.icon || "⬡"}</div><div style={{ background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "13px 16px", display: "flex", gap: 5, alignItems: "center" }}>{[0, .2, .4].map((d, i) => (<span key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: `rgb(${ac})`, display: "inline-block", animation: `tp-blink 1.1s ${d}s infinite` }} />))}</div></div>)}
         <div ref={bottomRef} />
       </div>
 
       {/* Banner de error */}
-      {error && (
-        <div style={{ padding: "9px 15px", background: "rgba(255,80,80,.08)", borderTop: "1px solid rgba(255,80,80,.2)", fontSize: 12, color: "#ff8080", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <span>⚠️ {error}</span>
-          <button onClick={() => setError("")} style={{ background: "none", border: "none", color: "rgba(255,80,80,.5)", cursor: "pointer", fontSize: 14 }}>✕</button>
-        </div>
-      )}
+      {error && (<div style={{ padding: "9px 15px", background: "rgba(255,80,80,.08)", borderTop: "1px solid rgba(255,80,80,.2)", fontSize: 12, color: "#ff8080", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}><span>⚠️ {error}</span><button onClick={() => setError("")} style={{ background: "none", border: "none", color: "rgba(255,80,80,.5)", cursor: "pointer", fontSize: 14 }}>✕</button></div>)}
 
       {/* Input */}
-      <div style={{ padding: "11px 14px 13px", borderTop: `1px solid rgba(${ac},.08)`, background: "rgba(3,10,6,.98)", flexShrink: 0 }}>
-        <div style={{ display: "flex", gap: 8 }}>
-
-          <textarea
-            ref={inputRef}
-            rows={1}
-            style={{
-              flex: 1,
-              background: "rgba(4,16,8,.95)",
-              border: `1px solid rgba(${ac},.14)`,
-              borderRadius: 10,
-              padding: "11px 13px",
-              color: "#c8dfd4",
-              fontSize: 13,
-              fontFamily: "'Outfit',sans-serif",
-              outline: "none",
-              caretColor: `rgb(${ac})`,
-              minWidth: 0,
-              resize: "none",
-              minHeight: "42px",
-              maxHeight: "120px",
-              overflowY: "auto",
-              lineHeight: 1.5
-            }}
-            value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-              e.target.style.height = "auto";
-              e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-                e.target.style.height = "auto";
-              }
-            }}
-            onFocus={(e) => (e.target.style.borderColor = `rgba(${ac},.4)`)}
-            onBlur={(e) => (e.target.style.borderColor = `rgba(${ac},.14)`)}
-            placeholder={loading ? "El mentor está respondiendo..." : "Escribe tu respuesta... (Shift + Enter para salto de línea)"}
-            disabled={loading}
-          />
-
-          <button
-            onClick={send}
-            disabled={loading || !input.trim()}
-            style={{ padding: "11px 15px", borderRadius: 10, border: `1px solid rgba(${ac},.25)`, background: `rgba(${ac},.09)`, color: `rgb(${ac})`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "monospace", flexShrink: 0, opacity: loading || !input.trim() ? .3 : 1, transition: "opacity .2s" }}
-          >
-            ▶
-          </button>
-        </div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,.1)", fontFamily: "monospace", marginTop: 5, textAlign: "center" }}>
-          Enter para enviar · ☰ para ver tu hoja de ruta
-        </div>
-      </div>
+      <div style={{ padding: "11px 14px 13px", borderTop: `1px solid rgba(${ac},.08)`, background: "rgba(3,10,6,.98)", flexShrink: 0 }}><div style={{ display: "flex", gap: 8 }}><textarea ref={inputRef} rows={1} style={{ flex: 1, background: "rgba(4,16,8,.95)", border: `1px solid rgba(${ac},.14)`, borderRadius: 10, padding: "11px 13px", color: "#c8dfd4", fontSize: 13, fontFamily: "'Outfit',sans-serif", outline: "none", caretColor: `rgb(${ac})`, minWidth: 0, resize: "none", minHeight: "42px", maxHeight: "120px", overflowY: "auto", lineHeight: 1.5 }} value={input} onChange={(e) => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); e.target.style.height = "auto"; } }} placeholder={loading ? "El mentor está respondiendo..." : "Escribe tu respuesta..."} disabled={loading} /><button onClick={send} disabled={loading || !input.trim()} style={{ padding: "11px 15px", borderRadius: 10, border: `1px solid rgba(${ac},.25)`, background: `rgba(${ac},.09)`, color: `rgb(${ac})`, cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "monospace", flexShrink: 0, opacity: loading || !input.trim() ? .3 : 1, transition: "opacity .2s" }}>▶</button></div><div style={{ fontSize: 10, color: "rgba(255,255,255,.1)", fontFamily: "monospace", marginTop: 5, textAlign: "center" }}>Enter para enviar · ☰ para menú</div></div>
     </div>
   );
 }
@@ -675,6 +614,7 @@ export default function App() {
 // ─── ESTILOS GLOBALES ─────────────────────────────────────────────────────────
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #04090b; }
   @keyframes tp-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
@@ -687,4 +627,5 @@ const CSS = `
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.07); border-radius: 2px; }
   button:active { opacity: .7; }
   textarea:focus { outline: none; }
+  font-family: 'Outfit', sans-serif;
 `;
