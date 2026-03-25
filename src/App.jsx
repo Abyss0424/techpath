@@ -681,12 +681,39 @@ export default function App() {
     // 3. ONBOARDING WIZARD (Terminal Style)
     if (screen === "wizard") return (
       <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
-        <div style={{ ...sGlass, maxWidth: "600px", width: "100%", padding: "0" }}>
+        <div style={{ ...sGlass, maxWidth: "600px", width: "100%", padding: "0", position: 'relative' }}>
           {/* Terminal Header */}
           <div style={{ background: "#000", padding: "10px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: "10px" }}>
             <div style={{ width: "12px", height: "12px", background: "rgba(255,0,0,0.5)", borderRadius: "50%" }}></div>
             <div style={{ width: "12px", height: "12px", background: "rgba(255,255,0,0.5)", borderRadius: "50%" }}></div>
             <div style={{ width: "12px", height: "12px", background: "var(--text-h)", borderRadius: "50%" }}></div>
+            
+            <button
+              onClick={() => setScreen('landing')}
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '15px',
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255,255,255,0.4)',
+                fontFamily: 'var(--mono)',
+                fontSize: '14px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                zIndex: 10
+              }}
+              onMouseOver={(e) => {
+                e.target.style.color = '#ff0000';
+                e.target.style.textShadow = '0 0 10px #ff0000, 0 0 20px #ff0000';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.color = 'rgba(255,255,255,0.4)';
+                e.target.style.textShadow = 'none';
+              }}
+            >
+              X
+            </button>
           </div>
           {/* Terminal Body */}
           <div style={{ padding: "30px", minHeight: "350px", display: "flex", flexDirection: "column" }}>
