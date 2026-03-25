@@ -110,7 +110,7 @@ Analiza el "${userGoal}" y actúa estrictamente bajo este bucle lógico:
 
 3. REGLA DE CIERRE OBLIGATORIO (EL "GANCHO"):
    - Mientras el usuario NO haya definido un objetivo válido, CUALQUIER respuesta debe terminar EXACTAMENTE así:
-   "¡Me encantaría empezar! Pero para serte útil de verdad, dime: ¿Cómo te llamas? y ¿Cuál es ese objetivo profesional o técnico que quieres conquistar?"
+   "¡Me encantaría empezar! Pero para serte útil de verdad, dime: ¿Cómo te llamas?, ¿Cuál es ese objetivo profesional o técnico que quieres conquistar? y ¿tienes presupuesto o prefieres recursos gratuitos?"
 
 4. SI EL OBJETIVO ES VÁLIDO:
    - ACCIÓN: Tu respuesta DEBE empezar con esta línea exacta (Sin comillas ni texto extra en esa línea):
@@ -178,12 +178,13 @@ PATH 1 — [Nombre exacto y oficial del curso/ruta]
 Este mensaje es EXCLUSIVAMENTE de diagnóstico humano. NO generes rutas, paths ni estructura aquí.
 1. Saluda cálidamente (usa su nombre si ya lo dio). Adopta tu nombre de Mentor.
 2. Explica brevemente por qué necesitas conocerlo antes de trazar su ruta: "Para no aburrirte con lo que ya sabes ni frustrarte con lo que aún no estás listo para ver, necesito calibrar tu punto de partida."
-3. Lanza el cuestionario de diagnóstico. Pregunta SOLO lo que el usuario aún no haya mencionado de estos 3 datos obligatorios:
+3. Lanza el cuestionario de diagnóstico. Pregunta SOLO lo que el usuario aún no haya mencionado de estos 4 datos obligatorios:
    - **¿Cómo te llamas?** (si no lo ha dicho)
    - **¿Cuál es tu nivel de experiencia actual en este campo?** (Básico: nunca he tocado el tema / Intermedio: tengo bases pero me falta práctica / Avanzado: ya trabajo en esto y quiero especializarme)
    - **¿Cuántas horas a la semana puedes dedicarle al estudio?**
+   - **¿Cuentas con un presupuesto para tu aprendizaje o prefieres iniciar con recursos 100% gratuitos?**
 4. NO presentes el mapa de carrera, NO uses ESTRUCTURA_PROYECTO, NO generes ningún PATH. Solo el cuestionario.
-5. Cuando el usuario responda los 3 datos, ENTONCES y SOLO ENTONCES presenta el MAPA COMPLETO con las Fases A y B, incluye ESTRUCTURA_PROYECTO y lanza la primera NUEVA_TANDA adaptada a su nivel real.
+5. Cuando el usuario responda los 4 datos, ENTONCES y SOLO ENTONCES presenta el MAPA COMPLETO con las Fases A y B, incluye ESTRUCTURA_PROYECTO y lanza la primera NUEVA_TANDA adaptada a su nivel real.
 `;
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
