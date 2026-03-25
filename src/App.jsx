@@ -342,18 +342,24 @@ export default function App() {
     try {
       const res = await geminiCall([{ role: "user", content: goal }], getSystemPrompt(goal));
       
-      // Lógica de detección:
       let finalMsg = res;
       let newGoal = goal;
       let newMentor = "TechPathAI";
 
+      // DETECCIÓN ROBUSTA
       if (res.includes("META_VALIDADA:")) {
-        const matchMeta = res.match(/META_VALIDADA:\s*(.*)/i);
-        if (matchMeta) newGoal = matchMeta[1].split('\n')[0].trim();
-        finalMsg = res.replace(/META_VALIDADA:.*\n?/, "").trim();
+        const matchMeta = res.match(/META_VALIDADA:\s*([^\n\r]*)/i);
+        if (matchMeta) newGoal = matchMeta[1].trim();
         
-        const matchMentor = finalMsg.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
-        if (matchMentor) newMentor = matchMentor[1];
+        // Si hay meta, forzamos un nombre para que el Sidebar se active
+        newMentor = "Mentor Senior"; 
+        
+        // Intentamos capturar el nombre artístico de la IA
+        const matchMentor = res.match(/soy\s+([^,.\n]*[Mm]entor|[^,.\n]*[Cc]oach)/i);
+        if (matchMentor) newMentor = matchMentor[1].trim();
+        
+        // Limpiamos el mensaje para el usuario
+        finalMsg = res.replace(/META_VALIDADA:[^\n\r]*\n?/, "").trim();
       }
 
       setMentorName(newMentor);
@@ -394,13 +400,25 @@ export default function App() {
       let newGoal = goalText;
 
       if (res.includes("META_VALIDADA:")) {
-        const matchMeta = res.match(/META_VALIDADA:\s*(.*)/i);
-        if (matchMeta) newGoal = matchMeta[1].split('\n')[0].trim();
-        finalMsg = res.replace(/META_VALIDADA:.*\n?/, "").trim();
+        const matchMeta = res.match(/META_VALIDADA:\s*([^\n\r]*)/i);
+        if (matchMeta) newGoal = matchMeta[1].trim();
         
-        const matchMentor = finalMsg.match(/soy\s+(\w*[Mm]entor\w*|\w*[Cc]oach\w*)/i);
-        if (matchMentor) newMentor = matchMentor[1];
+        // Si antes era TechPathAI, ahora ya no lo será
+        if (newMentor === "TechPathAI") newMentor = "Mentor Senior";
+
+        const matchMentor = res.match(/soy\s+([^,.\n]*[Mm]entor|[^,.\n]*[Cc]oach)/i);
+        if (matchMentor) newMentor = matchMentor[1].trim();
+
+        finalMsg = res.replace(/META_VALIDADA:[^\n\r]*\n?/, "").trim();
       }
+
+      const updatedMessages = [...next, { role: "assistant", content: finalMsg }];
+      setMessages(updatedMessages);
+      setMentorName(newMentor);
+      setGoalText(newGoal);
+
+      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: updatedMessages, mentorName: newMentor, goalText: newGoal } : c));
+    }
 
       const updatedMessages = [...next, { role: "assistant", content: finalMsg }];
       setMessages(updatedMessages);
