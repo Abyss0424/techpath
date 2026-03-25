@@ -309,18 +309,23 @@ export default function App() {
   const keyRef = useRef(null);
 
   const decryptState = (cipherText) => {
-    if (!cipherText || typeof cipherText !== "string" || cipherText.trim() === "") return [];
-    try {
-      const bytes = CryptoJS.AES.decrypt(cipherText, SECRET_KEY);
-      const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
-      const parsed = decryptedData ? JSON.parse(decryptedData) : [];
-      if (!Array.isArray(parsed)) throw new Error("Integridad fallida: array esperado");
-      return parsed;
-    } catch (error) {
-      console.error("Error de integridad:", error);
-      setTamperError("Manipulación detectada");
-      return [];
+    if (!cipherText || typeof cipherText !== "string" || cipherText.trim() === "") {
+      throw new Error("Integrity Failure: Empty cipherText");
     }
+
+    const bytes = CryptoJS.AES.decrypt(cipherText, SECRET_KEY);
+    const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+
+    if (!decryptedData) {
+      throw new Error("Integrity Failure: Decryption yielded empty string (padding/key mismatch)");
+    }
+
+    const parsed = JSON.parse(decryptedData);
+    if (!Array.isArray(parsed)) {
+      throw new Error("Integrity Failure: Array expected");
+    }
+
+    return parsed;
   };
 
   useEffect(() => {
@@ -332,11 +337,14 @@ export default function App() {
         localStorage.setItem("tp_saved_chats", encryptState(parsed));
         setSavedChats(parsed);
       } else {
-        const decrypted = decryptState(savedData);
-        if (decrypted.length === 0 && savedData.trim() !== "") {
-          localStorage.removeItem("tp_saved_chats");
+        try {
+          const decrypted = decryptState(savedData);
+          setSavedChats(decrypted);
+        } catch (error) {
+          console.error("Fallo Criptográfico Detectado:", error.message);
+          setTamperError("Manipulación de Local Storage detectada - Integridad de datos corrupta");
+          setSavedChats([]); // Garantiza UI limpia si el usuario esquiva el modal
         }
-        setSavedChats(decrypted);
       }
     }
   }, []);
@@ -563,9 +571,37 @@ export default function App() {
   // 1. API KEY
   if (screen === "apikey") return (
     <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
-      <div style={{ ...sGlass, padding: "40px", maxWidth: "450px", width: "100%" }}>
-        <h2 style={{ fontFamily: "var(--heading)", color: "var(--accent)", margin: "0 0 10px", textTransform: "uppercase" }}>[Auth_Required]</h2>
-        <p style={{ fontFamily: "var(--mono)", fontSize: "12px", marginBottom: "20px", color: "rgba(255,255,255,0.6)" }}>Introduce tu Groq API key para desencriptar el protocolo.</p>
+      <div style={{ ...sGlass, padding: "40px", maxWidth: "450px", width: "100%", position: 'relative' }}>
+        <button
+          onClick={() => setScreen("landing")}
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '25px',
+            background: 'transparent',
+            border: 'none',
+            color: 'rgba(255,255,255,0.4)',
+            fontFamily: 'var(--mono)',
+            fontSize: '18px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
+          onMouseOver={(e) => { e.target.style.color = '#ff4444'; e.target.style.textShadow = '0 0 10px #ff4444'; }}
+          onMouseOut={(e) => { e.target.style.color = 'rgba(255,255,255,0.4)'; e.target.style.textShadow = 'none'; }}
+        >
+          X
+        </button>
+        <h2 style={{ fontFamily: "var(--heading)", color: "var(--accent)", margin: "0 0 20px", textTransform: "uppercase" }}>[Auth_Required]</h2>
+        <ol style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'rgba(255,255,255,0.6)', paddingLeft: '20px', lineHeight: '1.8', margin: '0 0 24px 0' }}>
+          <li>
+            Entra a la Consola de Groq Keys.
+            <div style={{ marginTop: '5px', opacity: 0.8 }}>
+              Obtén tu key aquí: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--cyan)', textDecoration: 'none', textShadow: '0 0 8px var(--cyan)', fontWeight: 600 }}>groq.com/keys</a>
+            </div>
+          </li>
+          <li>Genera o copia tu clave API.</li>
+          <li>Pégala en el campo de abajo.</li>
+        </ol>
         <input ref={keyRef} type="password" style={{ ...sInput, marginBottom: "20px" }} value={keyInput} onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }} placeholder="gsk_..." onKeyDown={(e) => e.key === "Enter" && saveKey()} disabled={keyLoading} />
         {keyError && <p style={{ color: "red", fontFamily: "var(--mono)", fontSize: "12px", marginBottom: "20px" }}>{keyError}</p>}
         <button onClick={saveKey} disabled={!keyInput.trim() || keyLoading} style={{ ...sBtnGhost, width: "100%", borderColor: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)", color: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)" }}>
