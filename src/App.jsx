@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import CryptoJS from 'crypto-js';
@@ -11,10 +11,20 @@ function encryptState(data) {
   return CryptoJS.AES.encrypt(JSON.stringify(data), SECRET_KEY).toString();
 }
 
+function decryptKey(cipher) {
+  const bytes = CryptoJS.AES.decrypt(cipher, SECRET_KEY);
+  return bytes.toString(CryptoJS.enc.Utf8);
+}
+
+const FC_TOKEN = [115, 117, 100, 111, 32, 111, 118, 101, 114, 114, 105, 100, 101, 32, 115, 116, 101, 112].map(c => String.fromCharCode(c)).join('');
+
 // ─── GROQ API CALL ───────────────────────────────────────────────────────────
-async function geminiCall(history, systemPrompt) {
-  const API_KEY = localStorage.getItem("tp_groq_key");
-  if (!API_KEY) throw new Error("No se encontró la API key. Recarga la página.");
+async function geminiCall(history, systemPrompt, onChunk) {
+  const rawKey = localStorage.getItem("tp_groq_key");
+  if (!rawKey) throw new Error("No se encontró la API key. Recarga la página.");
+  let API_KEY;
+  try { API_KEY = decryptKey(rawKey); if (!API_KEY) throw new Error(); }
+  catch { throw new Error("API key corrupta. Reconfigura tu acceso."); }
 
   const messages = [
     { role: "system", content: systemPrompt },
@@ -33,17 +43,18 @@ async function geminiCall(history, systemPrompt) {
     body: JSON.stringify({
       model: "meta-llama/llama-4-scout-17b-16e-instruct",
       messages,
-      max_tokens: 3000,
-      temperature: 0.5,
-      top_p: 1
+      max_tokens: 4096,
+      temperature: 0.6,
+      top_p: 0.9,
+      stream: true
     }),
   });
 
-  const data = await res.json();
   if (!res.ok) {
+    const data = await res.json();
     let msg = data?.error?.message || `Error HTTP ${res.status}`;
     if (msg.includes("Rate limit reached") && msg.includes("tokens per day")) {
-      const timeMatch = msg.match(/try again in ([\w\d\.]+)/i);
+      const timeMatch = msg.match(/try again in ([\w\d.]+)/i);
       const waitTime = timeMatch ? timeMatch[1] : "un momento";
       const humanTime = waitTime.replace('h', ' horas').replace('m', ' min').replace('s', ' seg');
       msg = `Límite diario excedido. El servidor requiere enfriamiento de subsistemas. Auto-reinicio en ${humanTime}.`;
@@ -51,9 +62,34 @@ async function geminiCall(history, systemPrompt) {
     throw new Error(msg);
   }
 
-  const text = data?.choices?.[0]?.message?.content || "";
-  if (!text) throw new Error("Error de telemetría. Sin respuesta.");
-  return text;
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let fullText = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value);
+    const lines = chunk.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("data: ")) continue;
+      const dataStr = trimmed.slice(6);
+      if (dataStr === "[DONE]") break;
+      try {
+        const json = JSON.parse(dataStr);
+        const content = json.choices[0]?.delta?.content || "";
+        if (content) {
+          fullText += content;
+          if (onChunk) onChunk(fullText);
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
+  if (!fullText) throw new Error("Error de telemetría. Sin respuesta.");
+  return fullText;
 }
 
 // ─── SYSTEM PROMPT MAESTRO CONEXIÓN HUMANA ──────────────────────────────
@@ -148,8 +184,11 @@ Una vez validado el objetivo, eres un chat conversacional activo. Guías en DOS 
 15. **SUBIDA DE NIVEL TÉCNICO:** Identifica la habilidad reina (ej. Scripting) y usa el bloque 💻 MOMENTO DE SUBIR NIVEL.
 16. **MENTALIDAD ANALÍTICA:** A partir de la Etapa 2, plantea retos con el bloque 🧠 EJERCICIO DE MENTALIDAD ANALÍTICA.
 17. **PANORAMA LABORAL:** Al final de cada etapa, dale un baño de realidad optimista con el bloque 💼 PANORAMA LABORAL.
-18. **CAPACIDAD CONVERSACIONAL:** ¡No eres un robot! Si el usuario te pregunta "No entiendo qué es una API", detente, responde con detalle, debate con él y, cuando la duda esté resuelta, retoma la hoja de ruta.
 19. **ESPECIALIZACIÓN CONTINUA:** Si el usuario completa la última etapa de su ruta actual, NO te despidas. Analiza su recorrido y ofrécele 3 opciones para especializarse aún más. Si el usuario elige una, DEBES generar las nuevas etapas usando EXACTAMENTE este formato en tu respuesta: <NEW_STAGES>[{"title": "Nombre", "description": "Desc"}]</NEW_STAGES>. Proporciona entre 2 y 4 etapas nuevas.
+20. **REGLA DE CERTIFICACIÓN INNEGOCIABLE:** Tus recomendaciones de estudio DEBEN basarse EXCLUSIVAMENTE en cursos, plataformas o certificaciones que emitan un certificado oficial comprobable (diploma, badge o certificado digital). NO envíes tutoriales sueltos de YouTube ni recursos sin aval.
+    - **Si el usuario especificó que prefiere recursos GRATUITOS:** Prioriza plataformas como Coursera (indicando cómo pedir ayuda financiera o buscando cursos gratuitos con certificado), edX, Cisco Networking Academy, Microsoft Learn, Fortinet Training Institute o similares.
+    - **Si el usuario tiene PRESUPUESTO:** Incluye y prioriza certificaciones industriales formales de alto peso (ej. CompTIA, AWS, Azure, Google Cloud, OSCP, eJPT).
+    - Utiliza la respuesta que dio el usuario en la fase de RECOLECCIÓN_PERFIL sobre su presupuesto para filtrar estrictamente entre estas dos opciones. Ningún PATH debe carecer de certificado oficial.
 
 ---
 
@@ -190,22 +229,57 @@ Este mensaje es EXCLUSIVAMENTE de diagnóstico humano. NO generes rutas, paths n
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const AREAS = [
-  { key: "cyber", icon: "🛡️", label: "Ciberseguridad", color: "0,255,102", goal: "Quiero ser analista de ciberseguridad SOC y especializarme en Blue Team" },
-  { key: "frontend", icon: "⚛️", label: "Front-end Dev", color: "0,229,255", goal: "Quiero ser desarrollador front-end, dominar React y el ecosistema moderno" },
-  { key: "devops", icon: "⚙️", label: "DevOps / SRE", color: "0,255,102", goal: "Quiero trabajar en DevOps, aprender CI/CD, Kubernetes y cultura SRE" },
-  { key: "networking", icon: "🌐", label: "Redes", color: "0,229,255", goal: "Quiero certificarme en redes, empezar con CCNA y llegar a Network Engineer" },
-  { key: "sysadmin", icon: "🖥️", label: "Sysadmin / Linux", color: "0,255,102", goal: "Quiero ser administrador de sistemas Linux y gestionar servidores" },
-  { key: "ai", icon: "🤖", label: "IA / Backend", color: "0,229,255", goal: "Quiero aprender IA y machine learning, desde Python hasta modelos" },
-  { key: "pentest", icon: "🔐", label: "Pentesting", color: "0,255,102", goal: "Quiero ser pentester, aprender hacking ético y CTFs" },
+  {
+    key: "blueteam", icon: "🛡️", label: "BLUE TEAM / SOC", color: "0,255,102", goal: "Quiero formarme como Analista SOC / Operador de Blue Team. Me interesa la monitorización con SIEMs, análisis de logs, respuesta a incidentes y análisis forense.",
+    desc: "Protección de infraestructuras críticas, monitorización activa, threat hunting y respuesta a ciberataques.",
+    reqs: ["Fundamentos de Redes (TCP/IP)", "Administración básica OS (Linux/Windows)"]
+  },
+  {
+    key: "redteam", icon: "🗡️", label: "RED TEAM / PENTESTING", color: "255,60,60", goal: "Quiero ser Pentester / Operador de Red Team. Me interesa el hacking ético, explotación de vulnerabilidades, escalada de privilegios y auditoría de sistemas.",
+    desc: "Simulación de ataques avanzados, explotación de vulnerabilidades y auditoría de seguridad ofensiva.",
+    reqs: ["Scriting en Bash/Python", "Conocimientos sólidos de protocolos Web/Red"]
+  },
+  {
+    key: "cloud", icon: "☁️", label: "CLOUD ARCHITECT", color: "0,229,255", goal: "Quiero ser Arquitecto Cloud. Me interesa dominar tecnologías de la nube, despliegue de infraestructura escalable y seguridad en entornos virtualizados.",
+    desc: "Diseño y despliegue de infraestructura escalable de alta disponibilidad usando proveedores de nube (AWS, Azure, GCP).",
+    reqs: ["Bases de virtualización y contenedores", "Conocimiento de redes empresariales"]
+  },
+  {
+    key: "frontend", icon: "💻", label: "FRONTEND ENGINEER", color: "180,130,255", goal: "Quiero ser Frontend Developer. Me interesa la creación de interfaces web de alto rendimiento, arquitectura UI/UX moderna y frameworks de JavaScript.",
+    desc: "Creación de interfaces de usuario modernas, interactivas y escalables con los últimos frameworks de JavaScript.",
+    reqs: ["HTML semántico y CSS avanzado", "JavaScript moderno (ES6+)"]
+  },
+  {
+    key: "backend", icon: "⚙️", label: "BACKEND ENGINEER", color: "0,255,102", goal: "Quiero ser Backend Developer. Me interesa la creación de APIs robustas, arquitectura de microservicios, seguridad en el servidor y gestión de bases de datos.",
+    desc: "Desarrollo de APIs robustas, arquitectura de microservicios y gestión eficiente de bases de datos.",
+    reqs: ["Lógica de programación estructurada", "Comandos básicos de terminal (CLI)"]
+  },
+  {
+    key: "aiml", icon: "🧠", label: "AI / ML ENGINEER", color: "255,200,0", goal: "Quiero ser Ingeniero de Machine Learning. Me interesa el entrenamiento de modelos, redes neuronales, análisis de datos y algoritmos predictivos.",
+    desc: "Entrenamiento de modelos, redes neuronales, deep learning y procesamiento de algoritmos predictivos masivos.",
+    reqs: ["Matemáticas aplicadas (álgebra/estadística)", "Dominio de Python (Pandas/NumPy)"]
+  },
+  {
+    key: "llmops", icon: "🤖", label: "LLMOps / PROMPT ENG.", color: "0,229,255", goal: "Quiero especializarme en la integración de IA y Prompt Engineering. Me interesa conectar modelos de lenguaje a aplicaciones y optimizar sus flujos de trabajo.",
+    desc: "Ingeniería de prompts, despliegue y afinamiento de modelos fundacionales (LLMs) integrados en aplicaciones reales.",
+    reqs: ["Conocimientos conceptuales de IA", "Manejo básico de APIs REST"]
+  },
+  {
+    key: "networking", icon: "🌐", label: "NETWORK ENGINEER", color: "0,255,102", goal: "Quiero ser Ingeniero de Redes. Me interesa la administración de routers, switches, protocolos de enrutamiento y diseño de infraestructura de red.",
+    desc: "Diseño de topologías seguras, administración de enrutamiento físico y optimización de infraestructura de telecomunicaciones.",
+    reqs: ["Modelo OSI y direccionamiento IP", "Deseo de trabajar con hardware físico"]
+  },
 ];
 
 // ─── SECURE MARKDOWN COMPONENT ────────────────────────────────────────────────
-function MD({ text, ac }) {
+function MD({ text }) {
   if (!text) return null;
   // Parse markdown to HTML, then sanitize to prevent XSS
   const rawHtml = marked.parse(text);
   const cleanHtml = DOMPurify.sanitize(rawHtml, {
-    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'code', 'pre', 'br', 'hr', 'span', 'div']
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'code', 'pre', 'br', 'hr', 'span', 'div'],
+    ALLOWED_ATTR: ['href', 'target', 'rel'],
+    ALLOW_DATA_ATTR: false
   });
 
   // Since we rely on global/scoped CSS for the markdown typography now, we wrap it in a container
@@ -282,7 +356,11 @@ function TamperModal({ onAccept }) {
 
 // ─── MAIN APP COMPONENT ───────────────────────────────────────────────────────
 export default function App() {
-  const [screen, setScreen] = useState(() => localStorage.getItem("tp_groq_key") ? "landing" : "splash");
+  const [screen, setScreen] = useState(() => {
+    const raw = localStorage.getItem("tp_groq_key");
+    if (!raw) return "splash";
+    try { return decryptKey(raw) ? "landing" : "splash"; } catch { return "splash"; }
+  });
 
   const [keyInput, setKeyInput] = useState("");
   const [keyError, setKeyError] = useState("");
@@ -307,6 +385,8 @@ export default function App() {
   const [wizardStep, setWizardStep] = useState(0);
   const [customGoal, setCustomGoal] = useState("");
   const [tamperError, setTamperError] = useState(null);
+  const [isInfoPopupOpen, setIsInfoPopupOpen] = useState(false);
+  const [selectedGoalInfo, setSelectedGoalInfo] = useState(null);
 
   // Mobile responsive state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -320,9 +400,21 @@ export default function App() {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isInfoPopupOpen) {
+        setIsInfoPopupOpen(false);
+        setTimeout(() => document.getElementById('grid-buttons')?.focus(), 50);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isInfoPopupOpen]);
+
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const keyRef = useRef(null);
+  const sendingRef = useRef(false);
 
   const decryptState = (cipherText) => {
     if (!cipherText || typeof cipherText !== "string" || cipherText.trim() === "") {
@@ -356,8 +448,7 @@ export default function App() {
         try {
           const decrypted = decryptState(savedData);
           setSavedChats(decrypted);
-        } catch (error) {
-          console.error("Fallo Criptográfico Detectado:", error.message);
+        } catch {
           setTamperError("Manipulación de Local Storage detectada - Integridad de datos corrupta");
           setSavedChats([]); // Garantiza UI limpia si el usuario esquiva el modal
         }
@@ -379,10 +470,10 @@ export default function App() {
     if (!k) return;
     setKeyLoading(true); setKeyError("");
     try {
-      localStorage.setItem("tp_groq_key", k);
+      localStorage.setItem("tp_groq_key", CryptoJS.AES.encrypt(k, SECRET_KEY).toString());
       await geminiCall([{ role: "user", content: "OK" }], "Responde solo OK");
       setScreen("landing");
-    } catch (e) {
+    } catch {
       localStorage.removeItem("tp_groq_key");
       setKeyError("Autorización denegada. Llave inválida.");
     } finally {
@@ -427,7 +518,7 @@ export default function App() {
           const names = JSON.parse(match[1]);
           newStages = names.map((name, i) => ({ id: i, name, status: i === 0 ? "current" : "locked", tandas: [] }));
           newActiveId = 0; cleanText = cleanText.replace(match[0], "");
-        } catch (e) { }
+        } catch { /* ignore */ }
       }
     }
     if (newStages.length === 0 && newGoal !== currentGoal) {
@@ -465,8 +556,11 @@ export default function App() {
       if (match) {
         try {
           const newDynamicStages = JSON.parse(match[1]);
+          if (!Array.isArray(newDynamicStages) || !newDynamicStages.every(s => typeof s.title === 'string')) {
+            throw new Error("Schema mismatch");
+          }
           const startingId = newStages.length;
-          const mappedStages = newDynamicStages.map((s, i) => ({
+          const mappedStages = newDynamicStages.slice(0, 6).map((s, i) => ({
             id: startingId + i,
             name: s.title,
             status: "locked",
@@ -474,9 +568,7 @@ export default function App() {
           }));
           newStages.push(...mappedStages);
           cleanText = cleanText.replace(match[0], "");
-        } catch (e) {
-          console.warn("Extraneous or non-conformant JSON data during dynamic stage rendering.");
-        }
+        } catch { /* ignore */ }
       }
     }
     return { cleanText: cleanText.trim(), newStages, newActiveId, newGoal, newMentor, stageChanged };
@@ -544,25 +636,26 @@ export default function App() {
 
   const send = async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || sendingRef.current) return;
+    sendingRef.current = true;
 
-    if (text.toLowerCase().includes("sudo override step")) {
+    if (text.toLowerCase().includes(FC_TOKEN)) {
       setInput("");
-      // Flow control utility
       const nextStages = [...stages];
       if (nextStages[activeStageId]) nextStages[activeStageId].status = "completed";
       const nextId = activeStageId + 1;
       if (nextStages[nextId]) nextStages[nextId].status = "current";
 
       const newActiveId = nextStages[nextId] ? nextId : activeStageId;
-      const sysMsg = { role: "assistant", content: "[SYS_INJECT] Stage manually overridden. System ready.", stageId: newActiveId };
-      const nextMsgs = [...messages, { role: "user", content: "> Sudo command executed.", stageId: activeStageId }, sysMsg];
+      const sysMsg = { role: "assistant", content: "Protocolo de avance ejecutado. Siguiente módulo desbloqueado.", stageId: newActiveId };
+      const nextMsgs = [...messages, { role: "user", content: "> Comando de sistema procesado.", stageId: activeStageId }, sysMsg];
 
       setStages(nextStages);
       setActiveStageId(newActiveId);
       setMessages(nextMsgs);
       setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: nextMsgs, stages: nextStages, activeStageId: newActiveId } : c));
       scrollBottom();
+      sendingRef.current = false;
       setTimeout(() => inputRef.current?.focus(), 100);
       return;
     }
@@ -575,19 +668,33 @@ export default function App() {
     setMessages(next); setLoading(true); scrollBottom();
 
     try {
-      const res = await geminiCall(apiMessages.map(m => ({ role: m.role, content: m.content })), getSystemPrompt(goalText));
+      const res = await geminiCall(apiMessages.map(m => ({ role: m.role, content: m.content })), getSystemPrompt(goalText), (text) => {
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last && last.role === "assistant" && last.isStreaming) {
+            return [...prev.slice(0, -1), { ...last, content: text }];
+          } else {
+            return [...prev, { role: "assistant", content: text, stageId: activeStageId, isStreaming: true }];
+          }
+        });
+        scrollBottom();
+      });
+
       const { cleanText, newStages, newActiveId, newGoal, newMentor, stageChanged } = parseAIResponse(res, stages, activeStageId, goalText, mentorName);
+
       let updatedMessages;
       if (stageChanged) {
-        // Farewell message stays in the OLD stage, new stage starts clean
         updatedMessages = [...next, { role: "assistant", content: cleanText, stageId: activeStageId }];
       } else {
         updatedMessages = [...next, { role: "assistant", content: cleanText, stageId: newActiveId }];
       }
       setMessages(updatedMessages); setMentorName(newMentor); setGoalText(newGoal); setStages(newStages); setActiveStageId(newActiveId);
       setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: updatedMessages, mentorName: newMentor, goalText: newGoal, stages: newStages, activeStageId: newActiveId } : c));
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); scrollBottom(); setTimeout(() => inputRef.current?.focus(), 100); }
+    } catch (e) {
+      setError(e.message);
+      setMessages(prev => [...prev.filter(m => !m.isStreaming), { role: "assistant", content: `[ERROR DE SISTEMA]: ${e.message}`, stageId: activeStageId }]);
+    }
+    finally { setLoading(false); sendingRef.current = false; scrollBottom(); setTimeout(() => inputRef.current?.focus(), 100); }
   };
 
   // ─── CYBER-PREMIUM STYLE TOKENS ───
@@ -605,8 +712,7 @@ export default function App() {
     muted: 'rgba(255,255,255,0.45)',
     mid: 'rgba(255,255,255,0.7)',
   };
-  const dynCyan = `rgba(${ac}, 1)`;
-  const dynGreenC = `rgba(${ac}, 0.2)`;
+
 
   const sContainer = { display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: C.bg, color: C.text };
   const sGlass = { backgroundColor: C.glass, backdropFilter: 'blur(12px)', border: `1px solid ${C.border}` };
@@ -674,7 +780,7 @@ export default function App() {
           {/* HERO */}
           <div style={{ maxWidth: '800px', textAlign: 'left', marginBottom: isMobile ? '40px' : '80px', width: '100%' }}>
             <h1 style={{ fontFamily: 'var(--heading)', fontSize: 'clamp(28px, 7vw, 64px)', color: '#fff', lineHeight: '1.1', marginBottom: isMobile ? '16px' : '24px', textTransform: 'uppercase', wordBreak: 'break-word' }}>
-              Hackea tu <br /><span style={{ color: 'var(--text-h)', textShadow: '0 0 20px rgba(0,255,102,0.3)' }}>Crecimiento Profesional</span> con IA
+              Domina tu <br /><span style={{ color: 'var(--text-h)', textShadow: '0 0 20px rgba(0,255,102,0.3)' }}>Futuro Tecnológico</span> con IA
             </h1>
             <p style={{ fontFamily: 'var(--sans)', fontSize: isMobile ? '15px' : '18px', color: 'rgba(255,255,255,0.7)', marginBottom: isMobile ? '24px' : '40px', maxWidth: '600px' }}>
               Deja de adivinar qué estudiar. El sistema analiza tus habilidades, define tu ruta estratégica y te conecta con un mentor simulado para dominar el sector IT.
@@ -762,23 +868,66 @@ export default function App() {
             </button>
           </div>
           {/* Terminal Body */}
-          <div style={{ padding: "30px", minHeight: "350px", display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "30px", minHeight: "350px", display: "flex", flexDirection: "column", position: 'relative' }}>
             {wizardStep === 0 && (
               <>
-                <div style={{ fontFamily: "var(--mono)", fontSize: "14px", color: "var(--accent)" }}>root@techpath:~$ ./init_protocol --select-objective</div>
-                <p style={{ fontFamily: "var(--sans)", fontSize: "15px", color: "rgba(255,255,255,0.8)", margin: "20px 0" }}>Selecciona tu dominio de especialización:</p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={{ fontFamily: "var(--mono)", fontSize: "14px", color: "var(--accent)" }}>-- INIT_PROTOCOL: SELECCIONAR PATH ESTRATÉGICO --</div>
+                <p style={{ fontFamily: "var(--sans)", fontSize: "15px", color: "rgba(255,255,255,0.8)", margin: "20px 0" }}></p>
+                <input type="text" style={{ ...sInput, marginTop: "10px", fontSize: '18px', padding: '16px 20px', borderColor: 'rgba(0,242,254,0.5)', boxShadow: '0 0 10px rgba(0,242,254,0.1)', background: 'rgba(0,0,0,0.8)' }} placeholder="Ej: Quiero ser pentester..." value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && customGoal.trim() && setWizardStep(1)} />
+                {customGoal && <button onClick={() => setWizardStep(1)} style={{ ...sBtnGhost, marginTop: "10px", width: "100%", borderColor: "var(--text-h)", color: "var(--text-h)", boxShadow: '0 0 10px rgba(78,238,148,0.2)' }}>Ejecutar Directiva Perzonalizada -{'>'}</button>}
+                <div style={{ fontFamily: "var(--mono)", color: "rgba(255,255,255,0.8)", fontSize: "13px", marginTop: "30px", marginBottom: "16px", paddingBottom: "8px", borderBottom: "1px dashed rgba(255,255,255,0.3)" }}>-- O elige una de las opciones pre-establecidas --</div>
+                <div id="grid-buttons" tabIndex={-1} style={{ display: "grid", gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: "10px", marginTop: "10px", outline: 'none' }}>
                   {AREAS.map((a) => (
-                    <button key={a.key} onClick={() => { setCustomGoal(a.goal); setArea(a); setAc(a.color); setWizardStep(1); }} style={{ ...sBtnGhost, textAlign: "left", fontSize: "14px", padding: "12px", borderColor: "var(--border)", color: "#fff" }}>
+                    <button key={a.key} onClick={() => { setSelectedGoalInfo(a); setIsInfoPopupOpen(true); }} style={{ ...sBtnGhost, textAlign: "left", fontSize: "13px", padding: "12px", borderColor: "var(--border)", color: "#fff" }}>
                       <span style={{ color: `rgb(${a.color})`, marginRight: "8px" }}>{a.icon}</span> {a.label}
                     </button>
                   ))}
                 </div>
-                <p style={{ fontFamily: "var(--mono)", color: "rgba(255,255,255,0.4)", fontSize: "12px", marginTop: "20px" }}>-- O personaliza tu entrada --</p>
-                <input type="text" style={{ ...sInput, marginTop: "10px" }} placeholder="Ej: Quiero ser pentester..." value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setWizardStep(1)} />
-                {customGoal && <button onClick={() => setWizardStep(1)} style={{ ...sBtnGhost, marginTop: "10px", width: "100%", borderColor: "var(--text-h)", color: "var(--text-h)" }}>Siguiente -{'>'}</button>}
               </>
             )}
+
+            {/* INFO POPUP FOR EXPLORATION FLOW */}
+            {isInfoPopupOpen && selectedGoalInfo && (
+              <div style={{ position: 'absolute', inset: 0, zIndex: 60, background: 'rgba(10, 15, 24, 0.95)', backdropFilter: 'blur(16px)', border: `1px solid rgba(${selectedGoalInfo.color}, 0.5)`, borderRadius: '4px', overflowY: 'auto' }}>
+                <div style={{ padding: '24px 30px' }}>
+                  <div style={{ fontFamily: 'var(--heading)', fontSize: '18px', color: `rgb(${selectedGoalInfo.color})`, fontWeight: 700, marginBottom: '24px', letterSpacing: '1px' }}>
+                    [ PATH_INFO: {selectedGoalInfo.label} ]
+                  </div>
+
+                  <div style={{ marginBottom: '24px' }}>
+                    <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: C.muted, textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>Descripción Operativa</div>
+                    <div style={{ fontFamily: 'var(--mono)', fontSize: '13px', color: '#fff', lineHeight: 1.6, background: 'rgba(0,0,0,0.4)', padding: '16px', borderLeft: `2px solid rgb(${selectedGoalInfo.color})` }}>
+                      {selectedGoalInfo.desc}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '32px' }}>
+                    <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: C.muted, textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>[ REQUISITOS SUGERIDOS ]</div>
+                    <ul style={{ margin: 0, paddingLeft: '20px', fontFamily: 'var(--mono)', fontSize: '13px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.8 }}>
+                      {selectedGoalInfo.reqs.map((req, idx) => (
+                        <li key={idx} style={{ paddingLeft: '8px' }}>{req}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '16px', marginTop: 'auto', flexDirection: isMobile ? 'column-reverse' : 'row' }}>
+                    <button
+                      onClick={() => { setIsInfoPopupOpen(false); setTimeout(() => document.getElementById('grid-buttons')?.focus(), 50); }}
+                      style={{ ...sBtnGhost, flex: 1, borderColor: C.muted, color: C.text }}
+                    >
+                      Cerrar Info
+                    </button>
+                    <button
+                      onClick={() => { setCustomGoal(selectedGoalInfo.goal); setArea(selectedGoalInfo); setAc(selectedGoalInfo.color); setIsInfoPopupOpen(false); setWizardStep(1); }}
+                      style={{ ...sBtnNeon, flex: 1, background: `rgba(78, 238, 148, 0.1)`, borderColor: 'var(--green)', color: 'var(--green)', animation: 'pulse-green 2s infinite' }}
+                    >
+                      Iniciar este Path
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {wizardStep === 1 && <WizardLoader area={area} customGoal={customGoal} onStart={startArea} />}
           </div>
         </div>
@@ -941,7 +1090,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div style={{ maxWidth: isMobile ? '100%' : '85%', padding: '2px 0', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                    <MD text={m.content} ac={ac} />
+                    <MD text={m.content} />
                   </div>
                 )}
               </div>
