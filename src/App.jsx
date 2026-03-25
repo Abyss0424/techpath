@@ -32,15 +32,26 @@ async function geminiCall(history, systemPrompt) {
 
   const data = await res.json();
 
-  if (!res.ok) {
-    const msg = data?.error?.message || `Error HTTP ${res.status}`;
+ if (!res.ok) {
+    let msg = data?.error?.message || `Error HTTP ${res.status}`;
+
+    // 🔍 Detector de límite de tokens (TPD)
+    if (msg.includes("Rate limit reached") && msg.includes("tokens per day")) {
+      // Extraemos el tiempo (ej: 6m7.2s) usando Regex
+      const timeMatch = msg.match(/try again in ([\w\d\.]+)/i);
+      const waitTime = timeMatch ? timeMatch[1] : "un momento";
+      
+      // Traducimos las unidades para que se vea más limpio
+      const humanTime = waitTime
+        .replace('h', ' horas')
+        .replace('m', ' min')
+        .replace('s', ' seg');
+
+      msg = `Tu límite de tokens diarios ha concluido. Como mentor, necesito un descanso para procesar todo lo que hemos avanzado. Por favor, vuelve mañana o en aproximadamente ${humanTime}.`;
+    }
+
     throw new Error(msg);
   }
-
-  const text = data?.choices?.[0]?.message?.content || "";
-  if (!text) throw new Error("Sin respuesta. Intenta de nuevo.");
-  return text;
-}
 
 // ─── SYSTEM PROMPT MAESTRO CONEXIÓN HUMANA ──────────────────────────────
 const getSystemPrompt = (userGoal, userProfile = "") => `
