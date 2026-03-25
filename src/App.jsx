@@ -317,16 +317,15 @@ export default function App() {
   // ── FUNCIÓN: Iniciar nueva ruta ──
   const startArea = useCallback(async (selectedArea, customText = "") => {
     const goal = customText || selectedArea.goal;
-    
     const newChatId = Date.now().toString();
-    const newChatObject = {
-      id: newChatId,
-      area: selectedArea,
-      ac: selectedArea.color,
-      goalText: goal,
-      mentorName: "TechPathAI",
-      messages: [],
-      createdAt: new Date().toISOString()
+    const newChatObject = { 
+      id: newChatId, 
+      area: selectedArea, 
+      ac: selectedArea.color, 
+      goalText: goal, 
+      mentorName: "TechPathAI", 
+      messages: [], 
+      createdAt: new Date().toISOString() 
     };
 
     setError("");
@@ -346,19 +345,12 @@ export default function App() {
       let newGoal = goal;
       let newMentor = "TechPathAI";
 
-      // DETECCIÓN ROBUSTA
       if (res.includes("META_VALIDADA:")) {
         const matchMeta = res.match(/META_VALIDADA:\s*([^\n\r]*)/i);
         if (matchMeta) newGoal = matchMeta[1].trim();
-        
-        // Si hay meta, forzamos un nombre para que el Sidebar se active
         newMentor = "Mentor Senior"; 
-        
-        // Intentamos capturar el nombre artístico de la IA
         const matchMentor = res.match(/soy\s+([^,.\n]*[Mm]entor|[^,.\n]*[Cc]oach)/i);
         if (matchMentor) newMentor = matchMentor[1].trim();
-        
-        // Limpiamos el mensaje para el usuario
         finalMsg = res.replace(/META_VALIDADA:[^\n\r]*\n?/, "").trim();
       }
 
@@ -368,7 +360,7 @@ export default function App() {
       setMessages(initialMessages);
 
       setSavedChats(prev => [{ ...newChatObject, mentorName: newMentor, goalText: newGoal, messages: initialMessages }, ...prev]);
-    }  catch (e) {
+    } catch (e) {
       setError(e.message);
       const errorMsg = [{ role: "assistant", content: `⚠️ Error: ${e.message}` }];
       setMessages(errorMsg);
@@ -377,7 +369,7 @@ export default function App() {
       setLoading(false);
       scrollBottom();
     }
-  }, []);
+  }, [mentorName]);
 
   // ── FUNCIÓN: Enviar mensaje ──
   const send = useCallback(async () => {
@@ -402,23 +394,11 @@ export default function App() {
       if (res.includes("META_VALIDADA:")) {
         const matchMeta = res.match(/META_VALIDADA:\s*([^\n\r]*)/i);
         if (matchMeta) newGoal = matchMeta[1].trim();
-        
-        // Si antes era TechPathAI, ahora ya no lo será
         if (newMentor === "TechPathAI") newMentor = "Mentor Senior";
-
         const matchMentor = res.match(/soy\s+([^,.\n]*[Mm]entor|[^,.\n]*[Cc]oach)/i);
         if (matchMentor) newMentor = matchMentor[1].trim();
-
         finalMsg = res.replace(/META_VALIDADA:[^\n\r]*\n?/, "").trim();
       }
-
-      const updatedMessages = [...next, { role: "assistant", content: finalMsg }];
-      setMessages(updatedMessages);
-      setMentorName(newMentor);
-      setGoalText(newGoal);
-
-      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: updatedMessages, mentorName: newMentor, goalText: newGoal } : c));
-    }
 
       const updatedMessages = [...next, { role: "assistant", content: finalMsg }];
       setMessages(updatedMessages);
