@@ -278,7 +278,7 @@ function TamperModal({ onAccept }) {
 
 // ─── MAIN APP COMPONENT ───────────────────────────────────────────────────────
 export default function App() {
-  const [screen, setScreen] = useState(() => localStorage.getItem("tp_groq_key") ? "landing" : "apikey");
+  const [screen, setScreen] = useState(() => localStorage.getItem("tp_groq_key") ? "landing" : "splash");
 
   const [keyInput, setKeyInput] = useState("");
   const [keyError, setKeyError] = useState("");
@@ -572,12 +572,12 @@ export default function App() {
   if (screen === "apikey") return (
     <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
       <div style={{ ...sGlass, padding: "40px", maxWidth: "450px", width: "100%", position: 'relative' }}>
-        <button
-          onClick={() => setScreen("landing")}
+        <button 
+          onClick={() => { setScreen("splash"); setKeyInput(""); setKeyError(""); }} 
           style={{
             position: 'absolute',
-            top: '20px',
-            right: '25px',
+            top: '10px',
+            right: '10px',
             background: 'transparent',
             border: 'none',
             color: 'rgba(255,255,255,0.4)',
@@ -585,6 +585,7 @@ export default function App() {
             fontSize: '18px',
             cursor: 'pointer',
             transition: 'all 0.2s',
+            zIndex: 10
           }}
           onMouseOver={(e) => { e.target.style.color = '#ff4444'; e.target.style.textShadow = '0 0 10px #ff4444'; }}
           onMouseOut={(e) => { e.target.style.color = 'rgba(255,255,255,0.4)'; e.target.style.textShadow = 'none'; }}
@@ -611,8 +612,8 @@ export default function App() {
     </div>
   );
 
-  // 2. LANDING PAGE
-  if (screen === "landing") return (
+  // 2. LANDING / SPLASH PAGE
+  if (screen === "landing" || screen === "splash") return (
     <div style={{ ...sContainer }}>
       <header style={{ padding: "24px 40px", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", background: "rgba(0,0,0,0.5)" }}>
         <div style={{ fontFamily: "var(--heading)", fontSize: "20px", color: "var(--accent)", fontWeight: "bold", letterSpacing: "2px" }}>TechPath <span style={{ color: "var(--text-h)" }}>//</span></div>
@@ -628,7 +629,11 @@ export default function App() {
             Deja de adivinar qué estudiar. El sistema analiza tus habilidades, define tu ruta estratégica y te conecta con un mentor simulado para dominar el sector IT.
           </p>
           <div style={{ display: "flex", gap: "20px" }}>
-            <button onClick={() => savedChats.length < 3 && setScreen('wizard')} disabled={savedChats.length >= 3} style={{ ...sBtnNeon, opacity: savedChats.length >= 3 ? 0.3 : 1, cursor: savedChats.length >= 3 ? 'not-allowed' : 'pointer' }}>{savedChats.length >= 3 ? 'Slots Llenos (3/3)' : 'Generar mi Ruta (Gratis)'}</button>
+            {screen === "splash" ? (
+              <button onClick={() => setScreen('apikey')} style={sBtnNeon}>Connect to Protocols // Access</button>
+            ) : (
+              <button onClick={() => savedChats.length < 3 && setScreen('wizard')} disabled={savedChats.length >= 3} style={{ ...sBtnNeon, opacity: savedChats.length >= 3 ? 0.3 : 1, cursor: savedChats.length >= 3 ? 'not-allowed' : 'pointer' }}>{savedChats.length >= 3 ? 'Slots Llenos (3/3)' : 'Generar mi Ruta (Gratis)'}</button>
+            )}
           </div>
 
           <div style={{ marginTop: "40px", fontFamily: "var(--mono)", fontSize: "12px", color: "var(--accent)" }}>
@@ -641,8 +646,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* ACTIVE PATHS */}
-        {savedChats.length > 0 && (
+        {/* ACTIVE PATHS (Only if authenticated) */}
+        {screen === "landing" && savedChats.length > 0 && (
           <div style={{ width: "100%", maxWidth: "800px", borderTop: "1px solid var(--border)", paddingTop: "40px" }}>
             <h2 style={{ fontFamily: "var(--heading)", fontSize: "14px", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "20px", display: "flex", justifyContent: "space-between" }}>
               <span>Proyectos Activos</span>
