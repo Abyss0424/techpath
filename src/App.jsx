@@ -23,7 +23,7 @@ async function geminiCall(history, systemPrompt) {
       "Authorization": `Bearer ${API_KEY}`,
     },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model: "mixtral-8x7b-32768",
       messages,
       max_tokens: 4000,
       temperature: 0.7,
@@ -62,6 +62,29 @@ Eres un Mentor experto con más de 20 años de experiencia, pero tu enfoque es e
 
 🎯 OBJETIVO DEL USUARIO: "${userGoal}"
 ${userProfile ? `👤 PERFIL DEL USUARIO: ${userProfile}` : ""}
+
+---
+---
+🛠️ PROTOCOLO DE COMANDOS (Obligatorio para manejar la UI):
+
+1. DEFINIR RUTA INICIAL: Tras validar el objetivo, tu primer mensaje DEBE incluir:
+   ESTRUCTURA_PROYECTO: ["Nombre Etapa 1", "Nombre Etapa 2", ...] (Crea las que consideres necesarias).
+
+2. INICIAR ETAPA: Para activar el chat de una etapa:
+   INICIAR_ETAPA: [ID o Nombre]
+
+3. CREAR TANDA: Dentro de una etapa, organiza el estudio por tandas:
+   NUEVA_TANDA: [Nombre de la Tanda]
+   (Aquí usas el formato de PATHS habitual).
+
+4. DESBLOQUEAR SIGUIENTE: Cuando el usuario confirme completar la etapa actual:
+   DESBLOQUEAR_ETAPA: [Nombre de la siguiente]
+
+---
+📌 REGLAS DE CONTEXTO COMPARTIDO:
+- Tienes acceso a todo el historial. Si en la Etapa 1 usaste un curso de Python básico, en la Etapa 2 debes mencionarlo y avanzar a Python Avanzado.
+- NO repitas recursos. Construye sobre lo aprendido.
+- Si el usuario cambia de "sub-chat" (etapa), mantén la coherencia del proyecto global.
 
 ---
 
@@ -329,16 +352,20 @@ export default function App() {
   }, [currentChatId]);
 
   // ── FUNCIÓN: Iniciar nueva ruta ──
-  const startArea = useCallback(async (selectedArea, customText = "") => {
+  onst startArea = useCallback(async (selectedArea, customText = "") => {
     const goal = customText || selectedArea.goal;
     const newChatId = Date.now().toString();
+    
+    // Nueva estructura jerárquica
     const newChatObject = { 
       id: newChatId, 
       area: selectedArea, 
       ac: selectedArea.color, 
       goalText: goal, 
       mentorName: "TechPathAI", 
-      messages: [], 
+      stages: [], // <--- Aquí guardaremos lo que la IA defina
+      currentStageId: null,
+      messages: [], // Historial global para el contexto
       createdAt: new Date().toISOString() 
     };
 
@@ -537,7 +564,7 @@ export default function App() {
   );
 
   // ── PANTALLA: CHAT ──
-  return (
+return (
     <div style={{ height: "100vh", background: "#030a06", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
       <style>{CSS}</style>
 
@@ -548,7 +575,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "15px 14px 13px", borderBottom: `1px solid rgba(${ac},.08)` }}>
           <span style={{ fontSize: 18, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
           <span style={{ flex: 1, fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1 }}>{mentorName}</span>
-          <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.22)", fontSize: 15 }}>✕</button>
+          <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.22)", fontSize: 15, cursor: "pointer" }}>✕</button>
         </div>
 
         <div style={{ padding: "12px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
@@ -557,13 +584,36 @@ export default function App() {
           </button>
         </div>
 
+        {/* 🚀 INTEGRACIÓN PASO 4: ESTRUCTURA DINÁMICA DE ETAPAS */}
         <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
-          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>HOJA DE RUTA</div>
-          {DEFAULT_PHASES.map((ph, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 7, marginBottom: 3, border: `1px solid ${i === 0 ? `rgba(${ac},.2)` : "transparent"}`, background: i === 0 ? `rgba(${ac},.05)` : "transparent" }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: i === 0 ? `rgb(${ac})` : `rgba(${ac},.12)`, flexShrink: 0 }} />
-              <span style={{ fontSize: 12, color: i === 0 ? "rgba(255,255,255,.82)" : "rgba(255,255,255,.14)", flex: 1, fontWeight: i === 0 ? 600 : 400 }}>{ph}</span>
-              {i > 0 && <span>🔒</span>}
+          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>PROYECTO ACTIVO</div>
+          
+          {/* Mapeo dinámico de etapas definidas por la IA */}
+          {stages.map((stage) => (
+            <div key={stage.id} style={{ marginBottom: 12 }}>
+              <div 
+                onClick={() => stage.status !== 'locked' && setActiveStageId(stage.id)}
+                style={{ 
+                  display: "flex", alignItems: "center", gap: 8, padding: "8px", borderRadius: 8,
+                  background: activeStageId === stage.id ? `rgba(${ac},.1)` : "transparent",
+                  cursor: stage.status === 'locked' ? "default" : "pointer",
+                  border: `1px solid ${activeStageId === stage.id ? `rgba(${ac},.3)` : "transparent"}`,
+                  transition: "all .2s"
+                }}
+              >
+                <span style={{ fontSize: 12 }}>{stage.status === 'locked' ? "🔒" : "🟢"}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: stage.status === 'locked' ? "rgba(255,255,255,.3)" : "#fff" }}>
+                  {stage.name}
+                </span>
+              </div>
+
+              {/* SUB-DIVISIÓN: Tandas (Solo si la etapa está activa) */}
+              {activeStageId === stage.id && stage.tandas?.map((tanda, j) => (
+                <div key={j} style={{ paddingLeft: 25, marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: `rgb(${ac})` }} />
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,.4)" }}>{tanda.name}</span>
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -601,7 +651,11 @@ export default function App() {
         </button>
         <span style={{ fontSize: 16, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
         <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1, flex: 1 }}>{mentorName}</span>
-        <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>ETAPA 1</span>
+        {stages.length > 0 && (
+          <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>
+            ETAPA {activeStageId + 1}
+          </span>
+        )}
         <span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})` }} />
       </header>
 
