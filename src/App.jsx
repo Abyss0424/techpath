@@ -9,14 +9,19 @@ function encryptState(data) {
   return CryptoJS.AES.encrypt(JSON.stringify(data), SECRET_KEY).toString();
 }
 
-function decryptState(cipherText) {
+function decryptState(cipherText, onTamper) {
   try {
     const bytes = CryptoJS.AES.decrypt(cipherText, SECRET_KEY);
-    const decryptedData = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-    if (!decryptedData) throw new Error("Tamper detected");
+    const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+    if (!decryptedText) throw new Error("Tamper detected: Empty bytes");
+    
+    const decryptedData = JSON.parse(decryptedText);
+    if (!Array.isArray(decryptedData)) throw new Error("Tamper detected: State structure is not an Array");
+    
     return decryptedData;
   } catch (err) {
-    return null;
+    if (onTamper) onTamper();
+    return [];
   }
 }
 
@@ -328,15 +333,13 @@ export default function App() {
         localStorage.setItem("tp_saved_chats", encryptState(parsed));
         setSavedChats(parsed);
       } else {
-        const decrypted = decryptState(savedData);
-        if (decrypted === null) {
+        const decrypted = decryptState(savedData, () => {
           // TAMPER DETECTED
           setSavedChats([]);
           localStorage.removeItem("tp_saved_chats");
           setTamperError("Manipulación de Local Storage detectada - Integridad de datos corrupta");
-        } else {
-          setSavedChats(decrypted);
-        }
+        });
+        setSavedChats(decrypted);
       }
     }
   }, []);
