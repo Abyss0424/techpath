@@ -223,6 +223,11 @@ Este mensaje es EXCLUSIVAMENTE de diagnóstico humano. NO generes rutas, paths n
    - **¿Cuál es tu nivel de experiencia actual en este campo?** (Básico: nunca he tocado el tema / Intermedio: tengo bases pero me falta práctica / Avanzado: ya trabajo en esto y quiero especializarme)
    - **¿Cuántas horas a la semana puedes dedicarle al estudio?**
    - **¿Cuentas con un presupuesto para tu aprendizaje o prefieres iniciar con recursos 100% gratuitos?**
+
+---
+🕵️ CLASIFICACIÓN DINÁMICA DE PERFIL (OBLIGATORIO):
+"Cuando definas el objetivo del usuario por primera vez, o si el usuario cambia radicalmente de tema de estudio, DEBES clasificar su nueva área y stack principal. Devuelve esta información usando EXACTAMENTE este formato JSON oculto en cualquier parte de tu respuesta: <PROFILE>{"area": "Nombre del Área", "stack": "Icono + Nombre corto"}</PROFILE>. Ejemplo: <PROFILE>{"area": "Fotografía Digital", "stack": "📷 MEDIA"}</PROFILE>."
+
 4. NO presentes el mapa de carrera, NO uses ESTRUCTURA_PROYECTO, NO generes ningún PATH. Solo el cuestionario.
 5. Cuando el usuario responda los 4 datos, ENTONCES y SOLO ENTONCES presenta el MAPA COMPLETO con las Fases A y B, incluye ESTRUCTURA_PROYECTO y lanza la primera NUEVA_TANDA adaptada a su nivel real.
 `;
@@ -380,6 +385,7 @@ export default function App() {
   const [goalText, setGoalText] = useState("");
   const [stages, setStages] = useState([]);
   const [activeStageId, setActiveStageId] = useState(0);
+  const [operatorProfile, setOperatorProfile] = useState({ area: "ANALIZANDO...", stack: "⚙️ PENDIENTE" });
 
   // Wizard States
   const [wizardStep, setWizardStep] = useState(0);
@@ -567,6 +573,16 @@ export default function App() {
             tandas: []
           }));
           newStages.push(...mappedStages);
+          cleanText = cleanText.replace(match[0], "");
+        } catch { /* ignore */ }
+      }
+    }
+    if (cleanText.includes("<PROFILE>")) {
+      const match = cleanText.match(/<PROFILE>([\s\S]*?)<\/PROFILE>/);
+      if (match) {
+        try {
+          const parsed = JSON.parse(match[1]);
+          setOperatorProfile({ area: parsed.area, stack: parsed.stack });
           cleanText = cleanText.replace(match[0], "");
         } catch { /* ignore */ }
       }
@@ -1144,8 +1160,8 @@ export default function App() {
                 <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>Perfil del Operador</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {[
-                    { label: 'AREA', value: area?.label || '—' },
-                    { label: 'STACK', value: area?.icon ? `${area.icon} ${area.key?.toUpperCase()}` : '—' },
+                    { label: 'AREA', value: operatorProfile.area },
+                    { label: 'STACK', value: operatorProfile.stack },
                   ].map(({ label, value }) => (
                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: C.card, borderRadius: '2px' }}>
                       <span style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '1px' }}>{label}</span>
