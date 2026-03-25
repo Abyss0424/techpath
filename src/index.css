@@ -111,3 +111,37 @@ code {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── MARKDOWN TEXT WRAPPING ─────────────────────────────────────────── */
+.markdown-body {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.markdown-body pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+/* ─── MOBILE RESPONSIVE ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  :root {
+    font-size: 14px;
+  }
+}
+
+/* ─── ULTRA-NARROW (Galaxy Z Fold, iPhone SE) ───────────────── */
+@media (max-width: 400px) {
+  :root {
+    font-size: 13px;
+  }
+}

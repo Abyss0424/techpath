@@ -149,6 +149,7 @@ Una vez validado el objetivo, eres un chat conversacional activo. Guías en DOS 
 16. **MENTALIDAD ANALÍTICA:** A partir de la Etapa 2, plantea retos con el bloque 🧠 EJERCICIO DE MENTALIDAD ANALÍTICA.
 17. **PANORAMA LABORAL:** Al final de cada etapa, dale un baño de realidad optimista con el bloque 💼 PANORAMA LABORAL.
 18. **CAPACIDAD CONVERSACIONAL:** ¡No eres un robot! Si el usuario te pregunta "No entiendo qué es una API", detente, responde con detalle, debate con él y, cuando la duda esté resuelta, retoma la hoja de ruta.
+19. **ESPECIALIZACIÓN CONTINUA:** Si el usuario completa la última etapa de su ruta actual, NO te despidas. Analiza su recorrido y ofrécele 3 opciones para especializarse aún más. Si el usuario elige una, DEBES generar las nuevas etapas usando EXACTAMENTE este formato en tu respuesta: <NEW_STAGES>[{"title": "Nombre", "description": "Desc"}]</NEW_STAGES>. Proporciona entre 2 y 4 etapas nuevas.
 
 ---
 
@@ -307,6 +308,18 @@ export default function App() {
   const [customGoal, setCustomGoal] = useState("");
   const [tamperError, setTamperError] = useState(null);
 
+  // Mobile responsive state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handler = (e) => setIsMobile(e.matches);
+    handler(mq);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const keyRef = useRef(null);
@@ -447,6 +460,25 @@ export default function App() {
       stageChanged = true;
       cleanText = cleanText.replace(/DESBLOQUEAR_ETAPA:[^\n]*/, "");
     }
+    if (cleanText.includes("<NEW_STAGES>")) {
+      const match = cleanText.match(/<NEW_STAGES>([\s\S]*?)<\/NEW_STAGES>/);
+      if (match) {
+        try {
+          const newDynamicStages = JSON.parse(match[1]);
+          const startingId = newStages.length;
+          const mappedStages = newDynamicStages.map((s, i) => ({
+            id: startingId + i,
+            name: s.title,
+            status: "locked",
+            tandas: []
+          }));
+          newStages.push(...mappedStages);
+          cleanText = cleanText.replace(match[0], "");
+        } catch (e) {
+          console.warn("Extraneous or non-conformant JSON data during dynamic stage rendering.");
+        }
+      }
+    }
     return { cleanText: cleanText.trim(), newStages, newActiveId, newGoal, newMentor, stageChanged };
   };
 
@@ -513,17 +545,32 @@ export default function App() {
   const send = async () => {
     const text = input.trim();
     if (!text || loading) return;
-    let userContent = text; let isBypass = false;
 
     if (text.toLowerCase().includes("sudo override step")) {
-      isBypass = true;
-      userContent = `[SISTEMA - DEVELOPER BYPASS]: Ejecuta DESBLOQUEAR_ETAPA inmediatamente y despídete.`;
-    } else {
-      userContent = `<user_input>\n${text}\n</user_input>`;
+      setInput("");
+      // Flow control utility
+      const nextStages = [...stages];
+      if (nextStages[activeStageId]) nextStages[activeStageId].status = "completed";
+      const nextId = activeStageId + 1;
+      if (nextStages[nextId]) nextStages[nextId].status = "current";
+
+      const newActiveId = nextStages[nextId] ? nextId : activeStageId;
+      const sysMsg = { role: "assistant", content: "[SYS_INJECT] Stage manually overridden. System ready.", stageId: newActiveId };
+      const nextMsgs = [...messages, { role: "user", content: "> Sudo command executed.", stageId: activeStageId }, sysMsg];
+
+      setStages(nextStages);
+      setActiveStageId(newActiveId);
+      setMessages(nextMsgs);
+      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: nextMsgs, stages: nextStages, activeStageId: newActiveId } : c));
+      scrollBottom();
+      setTimeout(() => inputRef.current?.focus(), 100);
+      return;
     }
 
+    let userContent = `<user_input>\n${text}\n</user_input>`;
+
     setInput(""); setError("");
-    const next = [...messages, { role: "user", content: isBypass ? "> Sudo command executed." : text, stageId: activeStageId }];
+    const next = [...messages, { role: "user", content: text, stageId: activeStageId }];
     const apiMessages = [...messages, { role: "user", content: userContent, stageId: activeStageId }];
     setMessages(next); setLoading(true); scrollBottom();
 
@@ -576,7 +623,7 @@ export default function App() {
     // 1. API KEY
     if (screen === "apikey") return (
       <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
-        <div style={{ ...sGlass, padding: "40px", maxWidth: "450px", width: "100%", position: 'relative' }}>
+        <div style={{ ...sGlass, padding: isMobile ? '24px 16px' : '40px', maxWidth: '450px', width: isMobile ? '90%' : '100%', position: 'relative' }}>
           <button
             onClick={() => { setScreen("splash"); setKeyInput(""); setKeyError(""); }}
             style={{
@@ -608,7 +655,7 @@ export default function App() {
             <li>Genera o copia tu clave API.</li>
             <li>Pégala en el campo de abajo.</li>
           </ol>
-          <input ref={keyRef} type="password" style={{ ...sInput, marginBottom: "20px" }} value={keyInput} onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }} placeholder="gsk_..." onKeyDown={(e) => e.key === "Enter" && saveKey()} disabled={keyLoading} />
+          <input ref={keyRef} type="password" style={{ ...sInput, marginBottom: "20px", fontSize: '16px' }} value={keyInput} onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }} placeholder="gsk_..." onKeyDown={(e) => e.key === "Enter" && saveKey()} disabled={keyLoading} />
           {keyError && <p style={{ color: "red", fontFamily: "var(--mono)", fontSize: "12px", marginBottom: "20px" }}>{keyError}</p>}
           <button onClick={saveKey} disabled={!keyInput.trim() || keyLoading} style={{ ...sBtnGhost, width: "100%", borderColor: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)", color: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)" }}>
             {keyLoading ? "Validating..." : "Execute"}
@@ -620,42 +667,40 @@ export default function App() {
     // 2. LANDING / SPLASH PAGE
     if (screen === "landing" || screen === "splash") return (
       <div style={{ ...sContainer }}>
-        <header style={{ padding: "24px 40px", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", background: "rgba(0,0,0,0.5)" }}>
-          <div style={{ fontFamily: "var(--heading)", fontSize: "20px", color: "var(--accent)", fontWeight: "bold", letterSpacing: "2px" }}>TechPath <span style={{ color: "var(--text-h)" }}>//</span></div>
+        <header style={{ padding: isMobile ? '16px 16px' : '24px 40px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.5)' }}>
+          <div style={{ fontFamily: 'var(--heading)', fontSize: isMobile ? '17px' : '20px', color: 'var(--accent)', fontWeight: 'bold', letterSpacing: '2px' }}>TechPath <span style={{ color: 'var(--text-h)' }}>// By Julio Pujols</span></div>
         </header>
-        <main style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "80px 20px" }}>
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: isMobile ? '40px 16px' : '80px 20px' }}>
           {/* HERO */}
-          <div style={{ maxWidth: "800px", textAlign: "left", marginBottom: "80px" }}>
-            <h1 style={{ fontFamily: "var(--heading)", fontSize: "clamp(40px, 6vw, 64px)", color: "#fff", lineHeight: "1.1", marginBottom: "24px", textTransform: "uppercase" }}>
-              Hackea tu <br /><span style={{ color: "var(--text-h)", textShadow: "0 0 20px rgba(0,255,102,0.3)" }}>Crecimiento Profesional</span> con IA
+          <div style={{ maxWidth: '800px', textAlign: 'left', marginBottom: isMobile ? '40px' : '80px', width: '100%' }}>
+            <h1 style={{ fontFamily: 'var(--heading)', fontSize: 'clamp(28px, 7vw, 64px)', color: '#fff', lineHeight: '1.1', marginBottom: isMobile ? '16px' : '24px', textTransform: 'uppercase', wordBreak: 'break-word' }}>
+              Hackea tu <br /><span style={{ color: 'var(--text-h)', textShadow: '0 0 20px rgba(0,255,102,0.3)' }}>Crecimiento Profesional</span> con IA
             </h1>
-            <p style={{ fontFamily: "var(--sans)", fontSize: "18px", color: "rgba(255,255,255,0.7)", marginBottom: "40px", maxWidth: "600px" }}>
+            <p style={{ fontFamily: 'var(--sans)', fontSize: isMobile ? '15px' : '18px', color: 'rgba(255,255,255,0.7)', marginBottom: isMobile ? '24px' : '40px', maxWidth: '600px' }}>
               Deja de adivinar qué estudiar. El sistema analiza tus habilidades, define tu ruta estratégica y te conecta con un mentor simulado para dominar el sector IT.
             </p>
-            <div style={{ display: "flex", gap: "20px" }}>
-              {screen === "splash" ? (
-                <button onClick={() => setScreen('apikey')} style={sBtnNeon}>Connect to Protocols // Access</button>
+            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+              {screen === 'splash' ? (
+                <button onClick={() => setScreen('apikey')} style={{ ...sBtnNeon, fontSize: isMobile ? '12px' : '14px', padding: isMobile ? '10px 18px' : '12px 24px' }}>Connect to Protocols // Access</button>
               ) : (
-                <button onClick={() => savedChats.length < 3 && setScreen('wizard')} disabled={savedChats.length >= 3} style={{ ...sBtnNeon, opacity: savedChats.length >= 3 ? 0.3 : 1, cursor: savedChats.length >= 3 ? 'not-allowed' : 'pointer' }}>{savedChats.length >= 3 ? 'Slots Llenos (3/3)' : 'Generar mi Ruta (Gratis)'}</button>
+                <button onClick={() => savedChats.length < 3 && setScreen('wizard')} disabled={savedChats.length >= 3} style={{ ...sBtnNeon, fontSize: isMobile ? '12px' : '14px', padding: isMobile ? '10px 18px' : '12px 24px', opacity: savedChats.length >= 3 ? 0.3 : 1, cursor: savedChats.length >= 3 ? 'not-allowed' : 'pointer' }}>{savedChats.length >= 3 ? 'Slots Llenos (3/3)' : 'Generar mi Ruta (Gratis)'}</button>
               )}
             </div>
-            <div style={{ marginTop: "40px", fontFamily: "var(--mono)", fontSize: "12px", color: "var(--accent)" }}>
+            <div style={{ marginTop: isMobile ? '24px' : '40px', fontFamily: 'var(--mono)', fontSize: isMobile ? '10px' : '12px', color: 'var(--accent)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: isMobile ? '6px' : '10px' }}>
               <span style={{ opacity: 0.5 }}>SUPPORTED STACKS:</span>
-              <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>PYTHON</span>
-              <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>AWS</span>
-              <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>REACT</span>
-              <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>LINUX</span>
-              <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>KALI</span>
+              {['PYTHON', 'AWS', 'REACT', 'LINUX', 'KALI'].map(s => (
+                <span key={s} style={{ color: '#fff', border: '1px solid var(--border)', padding: isMobile ? '2px 6px' : '4px 8px', fontSize: isMobile ? '10px' : '12px' }}>{s}</span>
+              ))}
             </div>
           </div>
           {/* ACTIVE PATHS (Only if authenticated) */}
           {screen === "landing" && savedChats.length > 0 && (
-            <div style={{ width: "100%", maxWidth: "800px", borderTop: "1px solid var(--border)", paddingTop: "40px" }}>
-              <h2 style={{ fontFamily: "var(--heading)", fontSize: "14px", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "20px", display: "flex", justifyContent: "space-between" }}>
+            <div style={{ width: '100%', maxWidth: '800px', borderTop: '1px solid var(--border)', paddingTop: isMobile ? '24px' : '40px' }}>
+              <h2 style={{ fontFamily: 'var(--heading)', fontSize: isMobile ? '12px' : '14px', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
                 <span>Proyectos Activos</span>
                 <span>{savedChats.length}/3 Slots</span>
               </h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: isMobile ? '12px' : '20px' }}>
                 {savedChats.map((chat) => (
                   <div key={chat.id} onClick={() => loadChat(chat.id)} style={{ ...sGlass, padding: '18px', cursor: 'pointer', borderLeft: `2px solid rgb(${chat.ac})`, transition: 'all 0.2s' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -682,13 +727,13 @@ export default function App() {
     // 3. ONBOARDING WIZARD (Terminal Style)
     if (screen === "wizard") return (
       <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
-        <div style={{ ...sGlass, maxWidth: "600px", width: "100%", padding: "0", position: 'relative' }}>
+        <div style={{ ...sGlass, maxWidth: "600px", width: isMobile ? '92%' : '100%', padding: "0", position: 'relative' }}>
           {/* Terminal Header */}
           <div style={{ background: "#000", padding: "10px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: "10px" }}>
             <div style={{ width: "12px", height: "12px", background: "rgba(255,0,0,0.5)", borderRadius: "50%" }}></div>
             <div style={{ width: "12px", height: "12px", background: "rgba(255,255,0,0.5)", borderRadius: "50%" }}></div>
             <div style={{ width: "12px", height: "12px", background: "var(--text-h)", borderRadius: "50%" }}></div>
-            
+
             <button
               onClick={() => setScreen('landing')}
               style={{
@@ -740,76 +785,128 @@ export default function App() {
       </div>
     );
 
-    // 4. CHAT DASHBOARD — 3-PANEL DESKTOP
+    // 4. CHAT DASHBOARD — RESPONSIVE 3-PANEL
     const activeStage = stages.find(s => s.id === activeStageId);
     const completedCount = stages.filter(s => s.status === 'completed').length;
-    return (
-      <div style={{ height: '100vh', display: 'flex', backgroundColor: C.bg, color: C.text, overflow: 'hidden', fontFamily: 'var(--sans)' }}>
-        {/* ── LEFT SIDEBAR: SKILL TREE ── */}
-        <aside style={{ width: '260px', flexShrink: 0, borderRight: `1px solid ${C.border}`, background: C.panel, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          {/* Logo */}
-          <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ fontFamily: 'var(--heading)', fontSize: '17px', fontWeight: 700, color: C.cyan, letterSpacing: '1.5px' }}>
-              TechPath <span style={{ color: C.green }}>//</span>
-            </div>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, marginTop: '4px', letterSpacing: '1px' }}>
-              SYS_{mentorName}
-            </div>
+
+    const sidebarContent = (
+      <>
+        {/* Logo */}
+        <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontFamily: 'var(--heading)', fontSize: '17px', fontWeight: 700, color: C.cyan, letterSpacing: '1.5px' }}>
+            TechPath <span style={{ color: C.green }}>// By Julio Pujols</span>
           </div>
-          {/* Stages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', padding: '4px 8px 10px', textTransform: 'uppercase' }}>
-              Skill_Tree_Nodes
+          <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, marginTop: '4px', letterSpacing: '1px' }}>
+            SYS_{mentorName}
+          </div>
+        </div>
+        {/* Stages */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
+          <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', padding: '4px 8px 10px', textTransform: 'uppercase' }}>
+            Skill_Tree_Nodes
+          </div>
+          {stages.length === 0 && (
+            <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: C.muted, padding: '8px', textAlign: 'center', opacity: 0.5 }}>
+              — awaiting mission brief —
             </div>
-            {stages.length === 0 && (
-              <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: C.muted, padding: '8px', textAlign: 'center', opacity: 0.5 }}>
-                — awaiting mission brief —
-              </div>
-            )}
-            {stages.map((stage) => {
-              const isActive = activeStageId === stage.id;
-              const isDone = stage.status === 'completed';
-              const isLocked = stage.status === 'locked';
-              const stageColor = isDone ? C.muted : isActive ? `rgb(${ac})` : C.mid;
-              const badge = isDone ? '✓' : isActive ? '▶' : '⌁';
-              return (
-                <div key={stage.id}
-                  onClick={() => !isLocked && selectStage(stage.id)}
-                  style={{
-                    marginBottom: '4px', padding: '10px 10px', borderRadius: '3px',
-                    border: isActive ? `1px solid rgba(${ac},0.35)` : '1px solid transparent',
-                    background: isActive ? `rgba(${ac},0.05)` : 'transparent',
-                    boxShadow: isActive ? `inset 2px 0 0 rgb(${ac})` : isDone ? `inset 2px 0 0 ${C.muted}` : 'none',
-                    cursor: isLocked ? 'default' : 'pointer', color: stageColor, transition: 'all 0.15s',
-                  }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', opacity: 0.8 }}>{badge}</span>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', opacity: 0.6, letterSpacing: '0.5px' }}>
-                      {isDone ? '[DONE]' : isActive ? '[ACTIVE]' : isLocked ? '[LOCKED]' : '[READY]'}
-                    </span>
-                  </div>
-                  <div style={{ fontFamily: 'var(--sans)', fontSize: '12px', fontWeight: 500, marginTop: '3px', lineHeight: 1.3 }}>{stage.name}</div>
-                  {isActive && stage.tandas?.map((t, idx) => (
-                    <div key={idx} style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, marginTop: '5px', paddingLeft: '8px', borderLeft: `1px solid rgba(${ac},0.4)` }}>
-                      {'>'} {t.name}
-                    </div>
-                  ))}
+          )}
+          {stages.map((stage) => {
+            const isActive = activeStageId === stage.id;
+            const isDone = stage.status === 'completed';
+            const isLocked = stage.status === 'locked';
+            const stageColor = isDone ? C.muted : isActive ? `rgb(${ac})` : C.mid;
+            const badge = isDone ? '✓' : isActive ? '▶' : '⌁';
+            return (
+              <div key={stage.id}
+                onClick={() => { if (!isLocked) { selectStage(stage.id); setIsMenuOpen(false); } }}
+                style={{
+                  marginBottom: '4px', padding: '10px 10px', borderRadius: '3px',
+                  border: isActive ? `1px solid rgba(${ac},0.35)` : '1px solid transparent',
+                  background: isActive ? `rgba(${ac},0.05)` : 'transparent',
+                  boxShadow: isActive ? `inset 2px 0 0 rgb(${ac})` : isDone ? `inset 2px 0 0 ${C.muted}` : 'none',
+                  cursor: isLocked ? 'default' : 'pointer', color: stageColor, transition: 'all 0.15s',
+                }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', opacity: 0.8 }}>{badge}</span>
+                  <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', opacity: 0.6, letterSpacing: '0.5px' }}>
+                    {isDone ? '[DONE]' : isActive ? '[ACTIVE]' : isLocked ? '[LOCKED]' : '[READY]'}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-          {/* Exit button */}
-          <div style={{ padding: '12px', borderTop: `1px solid ${C.border}` }}>
-            <button onClick={() => setScreen('landing')} style={{ ...sBtnGhost, width: '100%', fontSize: '11px', padding: '8px', textAlign: 'center' }}>
-              {'< EXIT_SYSTEM'}
-            </button>
-          </div>
-        </aside>
+                <div style={{ fontFamily: 'var(--sans)', fontSize: '12px', fontWeight: 500, marginTop: '3px', lineHeight: 1.3 }}>{stage.name}</div>
+                {isActive && stage.tandas?.map((t, idx) => (
+                  <div key={idx} style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, marginTop: '5px', paddingLeft: '8px', borderLeft: `1px solid rgba(${ac},0.4)` }}>
+                    {'>'} {t.name}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+        {/* Exit button */}
+        <div style={{ padding: '12px', borderTop: `1px solid ${C.border}` }}>
+          <button onClick={() => { setScreen('landing'); setIsMenuOpen(false); }} style={{ ...sBtnGhost, width: '100%', fontSize: '11px', padding: '8px', textAlign: 'center' }}>
+            {'< EXIT_SYSTEM'}
+          </button>
+        </div>
+      </>
+    );
+
+    return (
+      <div style={{ height: '100vh', display: 'flex', backgroundColor: C.bg, color: C.text, overflow: 'hidden', fontFamily: 'var(--sans)', position: 'relative' }}>
+
+        {/* ── MOBILE DRAWER BACKDROP ── */}
+        {isMobile && isMenuOpen && (
+          <div
+            onClick={() => setIsMenuOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 40,
+              background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)',
+              animation: 'fadeIn 0.2s ease'
+            }}
+          />
+        )}
+
+        {/* ── LEFT SIDEBAR: SKILL TREE ── */}
+        {isMobile ? (
+          isMenuOpen && (
+            <aside style={{
+              position: 'fixed', top: 0, left: 0, bottom: 0,
+              width: '75%', maxWidth: '300px', zIndex: 50,
+              background: C.panel, display: 'flex', flexDirection: 'column',
+              borderRight: `1px solid ${C.border}`,
+              animation: 'slideInLeft 0.25s ease',
+              boxShadow: '4px 0 30px rgba(0,0,0,0.6)'
+            }}>
+              {sidebarContent}
+            </aside>
+          )
+        ) : (
+          <aside style={{ width: '260px', flexShrink: 0, borderRight: `1px solid ${C.border}`, background: C.panel, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            {sidebarContent}
+          </aside>
+        )}
+
         {/* ── CENTER: CHAT ── */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, borderRight: `1px solid ${C.border}` }}>
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, borderRight: isMobile ? 'none' : `1px solid ${C.border}` }}>
           {/* Header */}
-          <header style={{ padding: '14px 24px', borderBottom: `1px solid ${C.border}`, background: C.panel, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <header style={{ padding: isMobile ? '12px 14px' : '14px 24px', borderBottom: `1px solid ${C.border}`, background: C.panel, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+              {/* Hamburger menu — mobile only */}
+              {isMobile && (
+                <button
+                  onClick={() => setIsMenuOpen(prev => !prev)}
+                  style={{
+                    background: 'transparent', border: `1px solid ${C.border}`,
+                    color: C.cyan, fontFamily: 'var(--mono)', fontSize: '16px',
+                    cursor: 'pointer', padding: '4px 8px', lineHeight: 1,
+                    transition: 'all 0.2s', flexShrink: 0
+                  }}
+                  onMouseOver={(e) => { e.target.style.borderColor = C.cyan; e.target.style.textShadow = `0 0 10px ${C.cyan}`; }}
+                  onMouseOut={(e) => { e.target.style.borderColor = C.border; e.target.style.textShadow = 'none'; }}
+                >
+                  ≡
+                </button>
+              )}
               <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, flexShrink: 0, letterSpacing: '1px' }}>TARGET:</span>
               <span style={{ fontFamily: 'var(--sans)', fontSize: '13px', color: '#fff', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goalText || '—'}</span>
             </div>
@@ -821,7 +918,7 @@ export default function App() {
             )}
           </header>
           {/* Messages */}
-          <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <div style={{ flex: 1, padding: isMobile ? '16px 12px' : '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
             {loading && messages.length === 0 && (
               <div style={{ margin: 'auto', textAlign: 'center' }}>
                 <div style={{ fontSize: '28px', color: `rgb(${ac})`, animation: 'pulse 1.2s infinite', marginBottom: '10px' }}>⬡</div>
@@ -835,14 +932,15 @@ export default function App() {
                 </div>
                 {m.role === 'user' ? (
                   <div style={{
-                    maxWidth: '70%', background: C.glass, border: `1px solid rgba(${ac},0.2)`,
+                    maxWidth: isMobile ? '90%' : '70%', background: C.glass, border: `1px solid rgba(${ac},0.2)`,
                     borderRadius: '3px 3px 0 3px', padding: '12px 16px',
                     backdropFilter: 'blur(8px)', boxShadow: `0 4px 20px rgba(0,0,0,0.4)`,
+                    wordBreak: 'break-word',
                   }}>
                     <div style={{ fontFamily: 'var(--sans)', fontSize: '14px', lineHeight: 1.6, color: C.text }}>{m.content}</div>
                   </div>
                 ) : (
-                  <div style={{ maxWidth: '85%', padding: '2px 0' }}>
+                  <div style={{ maxWidth: isMobile ? '100%' : '85%', padding: '2px 0', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                     <MD text={m.content} ac={ac} />
                   </div>
                 )}
@@ -857,11 +955,11 @@ export default function App() {
           </div>
           {/* Terminal Input */}
           <div style={{ padding: '0', background: C.bg, borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', padding: '14px 20px', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', padding: isMobile ? '12px 12px' : '14px 20px', gap: '10px' }}>
               <span style={{ fontFamily: 'var(--mono)', fontSize: '14px', color: `rgb(${ac})`, flexShrink: 0, animation: loading ? 'blink 1s infinite' : 'none' }}>{'>'}</span>
               <input
                 ref={inputRef}
-                style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontFamily: 'var(--mono)', fontSize: '13px', outline: 'none', letterSpacing: '0.3px' }}
+                style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontFamily: 'var(--mono)', fontSize: '16px', outline: 'none', letterSpacing: '0.3px' }}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && send()}
@@ -876,58 +974,61 @@ export default function App() {
             </div>
           </div>
         </main>
-        {/* ── RIGHT INTEL PANEL ── */}
-        <aside style={{ width: '280px', flexShrink: 0, background: C.panel, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-          {/* Header */}
-          <div style={{ padding: '20px 16px 14px', borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.cyan, letterSpacing: '3px', textTransform: 'uppercase' }}>◈ Intel Panel</div>
-          </div>
-          <div style={{ flex: 1, padding: '14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Validated Goal */}
-            <div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>Objetivo Validado</div>
-              <div style={{ fontFamily: 'var(--sans)', fontSize: '12px', color: goalText ? '#fff' : C.muted, lineHeight: 1.5, padding: '10px', background: C.elevated, borderRadius: '2px', borderLeft: `2px solid ${C.cyan}` }}>
-                {goalText || '— awaiting validation —'}
-              </div>
+
+        {/* ── RIGHT INTEL PANEL (Desktop only) ── */}
+        {!isMobile && (
+          <aside style={{ width: '280px', flexShrink: 0, background: C.panel, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            {/* Header */}
+            <div style={{ padding: '20px 16px 14px', borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.cyan, letterSpacing: '3px', textTransform: 'uppercase' }}>◈ Intel Panel</div>
             </div>
-            {/* Operator Profile */}
-            <div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>Perfil del Operador</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {[
-                  { label: 'AREA', value: area?.label || '—' },
-                  { label: 'STACK', value: area?.icon ? `${area.icon} ${area.key?.toUpperCase()}` : '—' },
-                ].map(({ label, value }) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: C.card, borderRadius: '2px' }}>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '1px' }}>{label}</span>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: `rgb(${ac})`, fontWeight: 500 }}>{value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Progress */}
-            {stages.length > 0 && (
+            <div style={{ flex: 1, padding: '14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Validated Goal */}
               <div>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Progreso</span>
-                  <span style={{ color: `rgb(${ac})` }}>{completedCount}/{stages.length}</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  {stages.map(s => {
-                    const isDone = s.status === 'completed';
-                    const isAct = s.id === activeStageId;
-                    return (
-                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '1px', flexShrink: 0, background: isDone ? C.green : isAct ? `rgb(${ac})` : C.elevated, boxShadow: isAct ? `0 0 8px rgb(${ac})` : 'none', animation: isAct ? 'glow-pulse 2s infinite' : 'none' }} />
-                        <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: isDone ? C.mid : isAct ? '#fff' : C.muted, lineHeight: 1.3, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
-                      </div>
-                    );
-                  })}
+                <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>Objetivo Validado</div>
+                <div style={{ fontFamily: 'var(--sans)', fontSize: '12px', color: goalText ? '#fff' : C.muted, lineHeight: 1.5, padding: '10px', background: C.elevated, borderRadius: '2px', borderLeft: `2px solid ${C.cyan}` }}>
+                  {goalText || '— awaiting validation —'}
                 </div>
               </div>
-            )}
-          </div>
-        </aside>
+              {/* Operator Profile */}
+              <div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>Perfil del Operador</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[
+                    { label: 'AREA', value: area?.label || '—' },
+                    { label: 'STACK', value: area?.icon ? `${area.icon} ${area.key?.toUpperCase()}` : '—' },
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: C.card, borderRadius: '2px' }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '1px' }}>{label}</span>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: `rgb(${ac})`, fontWeight: 500 }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Progress */}
+              {stages.length > 0 && (
+                <div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Progreso</span>
+                    <span style={{ color: `rgb(${ac})` }}>{completedCount}/{stages.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    {stages.map(s => {
+                      const isDone = s.status === 'completed';
+                      const isAct = s.id === activeStageId;
+                      return (
+                        <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '1px', flexShrink: 0, background: isDone ? C.green : isAct ? `rgb(${ac})` : C.elevated, boxShadow: isAct ? `0 0 8px rgb(${ac})` : 'none', animation: isAct ? 'glow-pulse 2s infinite' : 'none' }} />
+                          <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: isDone ? C.mid : isAct ? '#fff' : C.muted, lineHeight: 1.3, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
       </div>
     );
   };
