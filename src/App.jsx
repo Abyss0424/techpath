@@ -10,6 +10,11 @@ function encryptState(data) {
 }
 
 function decryptState(cipherText, onTamper) {
+  if (!cipherText || typeof cipherText !== "string" || cipherText.trim() === "") {
+    if (onTamper) onTamper();
+    return [];
+  }
+  
   try {
     const bytes = CryptoJS.AES.decrypt(cipherText, SECRET_KEY);
     const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
