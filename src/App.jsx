@@ -9,27 +9,6 @@ function encryptState(data) {
   return CryptoJS.AES.encrypt(JSON.stringify(data), SECRET_KEY).toString();
 }
 
-function decryptState(cipherText, onTamper) {
-  if (!cipherText || typeof cipherText !== "string" || cipherText.trim() === "") {
-    if (onTamper) onTamper();
-    return [];
-  }
-  
-  try {
-    const bytes = CryptoJS.AES.decrypt(cipherText, SECRET_KEY);
-    const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-    if (!decryptedText) throw new Error("Tamper detected: Empty bytes");
-    
-    const decryptedData = JSON.parse(decryptedText);
-    if (!Array.isArray(decryptedData)) throw new Error("Tamper detected: State structure is not an Array");
-    
-    return decryptedData;
-  } catch (err) {
-    if (onTamper) onTamper();
-    return [];
-  }
-}
-
 // ─── GROQ API CALL ───────────────────────────────────────────────────────────
 async function geminiCall(history, systemPrompt) {
   const API_KEY = localStorage.getItem("tp_groq_key");
@@ -329,6 +308,21 @@ export default function App() {
   const inputRef = useRef(null);
   const keyRef = useRef(null);
 
+  const decryptState = (cipherText) => {
+    if (!cipherText || typeof cipherText !== "string" || cipherText.trim() === "") return [];
+    try {
+      const bytes = CryptoJS.AES.decrypt(cipherText, SECRET_KEY);
+      const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+      const parsed = decryptedData ? JSON.parse(decryptedData) : [];
+      if (!Array.isArray(parsed)) throw new Error("Integridad fallida: array esperado");
+      return parsed;
+    } catch (error) {
+      console.error("Error de integridad:", error);
+      setTamperError("Manipulación detectada");
+      return [];
+    }
+  };
+
   useEffect(() => {
     const savedData = localStorage.getItem("tp_saved_chats");
     if (savedData) {
@@ -338,12 +332,10 @@ export default function App() {
         localStorage.setItem("tp_saved_chats", encryptState(parsed));
         setSavedChats(parsed);
       } else {
-        const decrypted = decryptState(savedData, () => {
-          // TAMPER DETECTED
-          setSavedChats([]);
+        const decrypted = decryptState(savedData);
+        if (decrypted.length === 0 && savedData.trim() !== "") {
           localStorage.removeItem("tp_saved_chats");
-          setTamperError("Manipulación de Local Storage detectada - Integridad de datos corrupta");
-        });
+        }
         setSavedChats(decrypted);
       }
     }
@@ -557,6 +549,12 @@ export default function App() {
   };
   const dynCyan = `rgba(${ac}, 1)`;
   const dynGreenC = `rgba(${ac}, 0.2)`;
+
+  const sContainer = { display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: C.bg, color: C.text };
+  const sGlass = { backgroundColor: C.glass, backdropFilter: 'blur(12px)', border: `1px solid ${C.border}` };
+  const sInput = { width: '100%', background: 'rgba(0,0,0,0.6)', border: `1px solid ${C.border}`, color: '#fff', padding: '12px 16px', borderRadius: '2px', fontFamily: 'var(--mono)', outline: 'none', fontSize: '13px' };
+  const sBtnNeon = { background: `linear-gradient(135deg, rgba(${ac},0.9), rgba(${ac},0.6))`, color: '#000', border: 'none', padding: '12px 24px', fontFamily: 'var(--heading)', fontSize: '14px', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '1px', boxShadow: `0 0 20px rgba(${ac},0.35)` };
+  const sBtnGhost = { background: 'transparent', color: `rgb(${ac})`, border: `1px solid rgba(${ac},0.4)`, padding: '10px 20px', fontFamily: 'var(--mono)', fontSize: '13px', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px', transition: 'all 0.2s' };
 
   if (tamperError) {
     return <TamperModal onAccept={() => { localStorage.removeItem("tp_saved_chats"); setSavedChats([]); setTamperError(null); }} />;
