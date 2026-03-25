@@ -2,6 +2,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 import CryptoJS from 'crypto-js';
+import { Analytics } from "@vercel/analytics/react";
+
 
 const SECRET_KEY = "tp_cyber_lock_2026";
 
@@ -568,350 +570,344 @@ export default function App() {
     return <TamperModal onAccept={() => { localStorage.removeItem("tp_saved_chats"); setSavedChats([]); setTamperError(null); }} />;
   }
 
-  // 1. API KEY
-  if (screen === "apikey") return (
-    <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
-      <div style={{ ...sGlass, padding: "40px", maxWidth: "450px", width: "100%", position: 'relative' }}>
-        <button 
-          onClick={() => { setScreen("splash"); setKeyInput(""); setKeyError(""); }} 
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: 'transparent',
-            border: 'none',
-            color: 'rgba(255,255,255,0.4)',
-            fontFamily: 'var(--mono)',
-            fontSize: '18px',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            zIndex: 10
-          }}
-          onMouseOver={(e) => { e.target.style.color = '#ff4444'; e.target.style.textShadow = '0 0 10px #ff4444'; }}
-          onMouseOut={(e) => { e.target.style.color = 'rgba(255,255,255,0.4)'; e.target.style.textShadow = 'none'; }}
-        >
-          X
-        </button>
-        <h2 style={{ fontFamily: "var(--heading)", color: "var(--accent)", margin: "0 0 20px", textTransform: "uppercase" }}>[Auth_Required]</h2>
-        <ol style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'rgba(255,255,255,0.6)', paddingLeft: '20px', lineHeight: '1.8', margin: '0 0 24px 0' }}>
-          <li>
-            Entra a la Consola de Groq Keys.
-            <div style={{ marginTop: '5px', opacity: 0.8 }}>
-              Obtén tu key aquí: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--cyan)', textDecoration: 'none', textShadow: '0 0 8px var(--cyan)', fontWeight: 600 }}>groq.com/keys</a>
-            </div>
-          </li>
-          <li>Genera o copia tu clave API.</li>
-          <li>Pégala en el campo de abajo.</li>
-        </ol>
-        <input ref={keyRef} type="password" style={{ ...sInput, marginBottom: "20px" }} value={keyInput} onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }} placeholder="gsk_..." onKeyDown={(e) => e.key === "Enter" && saveKey()} disabled={keyLoading} />
-        {keyError && <p style={{ color: "red", fontFamily: "var(--mono)", fontSize: "12px", marginBottom: "20px" }}>{keyError}</p>}
-        <button onClick={saveKey} disabled={!keyInput.trim() || keyLoading} style={{ ...sBtnGhost, width: "100%", borderColor: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)", color: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)" }}>
-          {keyLoading ? "Validating..." : "Execute"}
-        </button>
-      </div>
-    </div>
-  );
-
-  // 2. LANDING / SPLASH PAGE
-  if (screen === "landing" || screen === "splash") return (
-    <div style={{ ...sContainer }}>
-      <header style={{ padding: "24px 40px", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", background: "rgba(0,0,0,0.5)" }}>
-        <div style={{ fontFamily: "var(--heading)", fontSize: "20px", color: "var(--accent)", fontWeight: "bold", letterSpacing: "2px" }}>TechPath <span style={{ color: "var(--text-h)" }}>//</span></div>
-      </header>
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "80px 20px" }}>
-
-        {/* HERO */}
-        <div style={{ maxWidth: "800px", textAlign: "left", marginBottom: "80px" }}>
-          <h1 style={{ fontFamily: "var(--heading)", fontSize: "clamp(40px, 6vw, 64px)", color: "#fff", lineHeight: "1.1", marginBottom: "24px", textTransform: "uppercase" }}>
-            Hackea tu <br /><span style={{ color: "var(--text-h)", textShadow: "0 0 20px rgba(0,255,102,0.3)" }}>Crecimiento Profesional</span> con IA
-          </h1>
-          <p style={{ fontFamily: "var(--sans)", fontSize: "18px", color: "rgba(255,255,255,0.7)", marginBottom: "40px", maxWidth: "600px" }}>
-            Deja de adivinar qué estudiar. El sistema analiza tus habilidades, define tu ruta estratégica y te conecta con un mentor simulado para dominar el sector IT.
-          </p>
-          <div style={{ display: "flex", gap: "20px" }}>
-            {screen === "splash" ? (
-              <button onClick={() => setScreen('apikey')} style={sBtnNeon}>Connect to Protocols // Access</button>
-            ) : (
-              <button onClick={() => savedChats.length < 3 && setScreen('wizard')} disabled={savedChats.length >= 3} style={{ ...sBtnNeon, opacity: savedChats.length >= 3 ? 0.3 : 1, cursor: savedChats.length >= 3 ? 'not-allowed' : 'pointer' }}>{savedChats.length >= 3 ? 'Slots Llenos (3/3)' : 'Generar mi Ruta (Gratis)'}</button>
-            )}
-          </div>
-
-          <div style={{ marginTop: "40px", fontFamily: "var(--mono)", fontSize: "12px", color: "var(--accent)" }}>
-            <span style={{ opacity: 0.5 }}>SUPPORTED STACKS:</span>
-            <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>PYTHON</span>
-            <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>AWS</span>
-            <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>REACT</span>
-            <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>LINUX</span>
-            <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>KALI</span>
-          </div>
-        </div>
-
-        {/* ACTIVE PATHS (Only if authenticated) */}
-        {screen === "landing" && savedChats.length > 0 && (
-          <div style={{ width: "100%", maxWidth: "800px", borderTop: "1px solid var(--border)", paddingTop: "40px" }}>
-            <h2 style={{ fontFamily: "var(--heading)", fontSize: "14px", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "20px", display: "flex", justifyContent: "space-between" }}>
-              <span>Proyectos Activos</span>
-              <span>{savedChats.length}/3 Slots</span>
-            </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
-              {savedChats.map((chat) => (
-                <div key={chat.id} onClick={() => loadChat(chat.id)} style={{ ...sGlass, padding: '18px', cursor: 'pointer', borderLeft: `2px solid rgb(${chat.ac})`, transition: 'all 0.2s' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <div style={{ fontFamily: 'var(--heading)', fontSize: '14px', fontWeight: 700, color: `rgb(${chat.ac})`, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px' }}>
-                      {chat.goalText ? `${chat.area?.icon || '◈'} ${chat.goalText.slice(0, 40)}${chat.goalText.length > 40 ? '…' : ''}` : `Misión: ${chat.area?.label || 'Custom'}`}
-                    </div>
-                    <button onClick={(e) => deleteChat(chat.id, e)} style={{ background: 'none', border: 'none', color: 'rgba(255,80,80,0.7)', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: '11px', flexShrink: 0 }}>[X]</button>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'rgba(255,255,255,0.4)', background: C.card, padding: '2px 6px', borderRadius: '2px', letterSpacing: '0.5px' }}>{chat.area?.label?.toUpperCase()}</span>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted }}>·</span>
-                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted }}>{chat.mentorName !== 'SYSTEM' ? chat.mentorName : 'Initializing…'}</span>
-                  </div>
-                  <p style={{ fontFamily: 'var(--sans)', fontSize: '12px', color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 }}>{chat.goalText || '—'}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
-
-  // 3. ONBOARDING WIZARD (Terminal Style)
-  if (screen === "wizard") return (
-    <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
-      <div style={{ ...sGlass, maxWidth: "600px", width: "100%", padding: "0" }}>
-        {/* Terminal Header */}
-        <div style={{ background: "#000", padding: "10px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: "10px" }}>
-          <div style={{ width: "12px", height: "12px", background: "rgba(255,0,0,0.5)", borderRadius: "50%" }}></div>
-          <div style={{ width: "12px", height: "12px", background: "rgba(255,255,0,0.5)", borderRadius: "50%" }}></div>
-          <div style={{ width: "12px", height: "12px", background: "var(--text-h)", borderRadius: "50%" }}></div>
-        </div>
-
-        {/* Terminal Body */}
-        <div style={{ padding: "30px", minHeight: "350px", display: "flex", flexDirection: "column" }}>
-          {wizardStep === 0 && (
-            <>
-              <div style={{ fontFamily: "var(--mono)", fontSize: "14px", color: "var(--accent)" }}>root@techpath:~$ ./init_protocol --select-objective</div>
-              <p style={{ fontFamily: "var(--sans)", fontSize: "15px", color: "rgba(255,255,255,0.8)", margin: "20px 0" }}>Selecciona tu dominio de especialización:</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                {AREAS.map((a) => (
-                  <button key={a.key} onClick={() => { setCustomGoal(a.goal); setArea(a); setAc(a.color); setWizardStep(1); }} style={{ ...sBtnGhost, textAlign: "left", fontSize: "14px", padding: "12px", borderColor: "var(--border)", color: "#fff" }}>
-                    <span style={{ color: `rgb(${a.color})`, marginRight: "8px" }}>{a.icon}</span> {a.label}
-                  </button>
-                ))}
+  // ─── SCREEN RENDERER ───────────────────────────────────────────────────────
+  const renderContent = () => {
+    // 1. API KEY
+    if (screen === "apikey") return (
+      <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
+        <div style={{ ...sGlass, padding: "40px", maxWidth: "450px", width: "100%", position: 'relative' }}>
+          <button
+            onClick={() => { setScreen("splash"); setKeyInput(""); setKeyError(""); }}
+            style={{
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              background: 'transparent',
+              border: 'none',
+              color: 'rgba(255,255,255,0.4)',
+              fontFamily: 'var(--mono)',
+              fontSize: '18px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              zIndex: 10
+            }}
+            onMouseOver={(e) => { e.target.style.color = '#ff4444'; e.target.style.textShadow = '0 0 10px #ff4444'; }}
+            onMouseOut={(e) => { e.target.style.color = 'rgba(255,255,255,0.4)'; e.target.style.textShadow = 'none'; }}
+          >
+            X
+          </button>
+          <h2 style={{ fontFamily: "var(--heading)", color: "var(--accent)", margin: "0 0 20px", textTransform: "uppercase" }}>[Auth_Required]</h2>
+          <ol style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'rgba(255,255,255,0.6)', paddingLeft: '20px', lineHeight: '1.8', margin: '0 0 24px 0' }}>
+            <li>
+              Entra a la Consola de Groq Keys.
+              <div style={{ marginTop: '5px', opacity: 0.8 }}>
+                Obtén tu key aquí: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--cyan)', textDecoration: 'none', textShadow: '0 0 8px var(--cyan)', fontWeight: 600 }}>groq.com/keys</a>
               </div>
-              <p style={{ fontFamily: "var(--mono)", color: "rgba(255,255,255,0.4)", fontSize: "12px", marginTop: "20px" }}>-- O personaliza tu entrada --</p>
-              <input type="text" style={{ ...sInput, marginTop: "10px" }} placeholder="Ej: Quiero ser pentester..." value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setWizardStep(1)} />
-              {customGoal && <button onClick={() => setWizardStep(1)} style={{ ...sBtnGhost, marginTop: "10px", width: "100%", borderColor: "var(--text-h)", color: "var(--text-h)" }}>Siguiente -{'>'}</button>}
-            </>
-          )}
-
-          {wizardStep === 1 && <WizardLoader area={area} customGoal={customGoal} onStart={startArea} />}
-        </div>
-      </div>
-    </div>
-  );
-
-  // 4. CHAT DASHBOARD — 3-PANEL DESKTOP
-  const activeStage = stages.find(s => s.id === activeStageId);
-  const completedCount = stages.filter(s => s.status === 'completed').length;
-  return (
-    <div style={{ height: '100vh', display: 'flex', backgroundColor: C.bg, color: C.text, overflow: 'hidden', fontFamily: 'var(--sans)' }}>
-
-      {/* ── LEFT SIDEBAR: SKILL TREE ── */}
-      <aside style={{ width: '260px', flexShrink: 0, borderRight: `1px solid ${C.border}`, background: C.panel, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-        {/* Logo */}
-        <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontFamily: 'var(--heading)', fontSize: '17px', fontWeight: 700, color: C.cyan, letterSpacing: '1.5px' }}>
-            TechPath <span style={{ color: C.green }}>//</span>
-          </div>
-          <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, marginTop: '4px', letterSpacing: '1px' }}>
-            SYS_{mentorName}
-          </div>
-        </div>
-
-        {/* Stages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
-          <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', padding: '4px 8px 10px', textTransform: 'uppercase' }}>
-            Skill_Tree_Nodes
-          </div>
-          {stages.length === 0 && (
-            <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: C.muted, padding: '8px', textAlign: 'center', opacity: 0.5 }}>
-              — awaiting mission brief —
-            </div>
-          )}
-          {stages.map((stage) => {
-            const isActive = activeStageId === stage.id;
-            const isDone = stage.status === 'completed';
-            const isLocked = stage.status === 'locked';
-            const stageColor = isDone ? C.muted : isActive ? `rgb(${ac})` : C.mid;
-            const badge = isDone ? '✓' : isActive ? '▶' : '⌁';
-            return (
-              <div key={stage.id}
-                onClick={() => !isLocked && selectStage(stage.id)}
-                style={{
-                  marginBottom: '4px', padding: '10px 10px', borderRadius: '3px',
-                  border: isActive ? `1px solid rgba(${ac},0.35)` : '1px solid transparent',
-                  background: isActive ? `rgba(${ac},0.05)` : 'transparent',
-                  boxShadow: isActive ? `inset 2px 0 0 rgb(${ac})` : isDone ? `inset 2px 0 0 ${C.muted}` : 'none',
-                  cursor: isLocked ? 'default' : 'pointer', color: stageColor, transition: 'all 0.15s',
-                }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', opacity: 0.8 }}>{badge}</span>
-                  <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', opacity: 0.6, letterSpacing: '0.5px' }}>
-                    {isDone ? '[DONE]' : isActive ? '[ACTIVE]' : isLocked ? '[LOCKED]' : '[READY]'}
-                  </span>
-                </div>
-                <div style={{ fontFamily: 'var(--sans)', fontSize: '12px', fontWeight: 500, marginTop: '3px', lineHeight: 1.3 }}>{stage.name}</div>
-                {isActive && stage.tandas?.map((t, idx) => (
-                  <div key={idx} style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, marginTop: '5px', paddingLeft: '8px', borderLeft: `1px solid rgba(${ac},0.4)` }}>
-                    {'>'} {t.name}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Exit button */}
-        <div style={{ padding: '12px', borderTop: `1px solid ${C.border}` }}>
-          <button onClick={() => setScreen('landing')} style={{ ...sBtnGhost, width: '100%', fontSize: '11px', padding: '8px', textAlign: 'center' }}>
-            {'< EXIT_SYSTEM'}
+            </li>
+            <li>Genera o copia tu clave API.</li>
+            <li>Pégala en el campo de abajo.</li>
+          </ol>
+          <input ref={keyRef} type="password" style={{ ...sInput, marginBottom: "20px" }} value={keyInput} onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }} placeholder="gsk_..." onKeyDown={(e) => e.key === "Enter" && saveKey()} disabled={keyLoading} />
+          {keyError && <p style={{ color: "red", fontFamily: "var(--mono)", fontSize: "12px", marginBottom: "20px" }}>{keyError}</p>}
+          <button onClick={saveKey} disabled={!keyInput.trim() || keyLoading} style={{ ...sBtnGhost, width: "100%", borderColor: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)", color: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)" }}>
+            {keyLoading ? "Validating..." : "Execute"}
           </button>
         </div>
-      </aside>
+      </div>
+    );
 
-      {/* ── CENTER: CHAT ── */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, borderRight: `1px solid ${C.border}` }}>
-        {/* Header */}
-        <header style={{ padding: '14px 24px', borderBottom: `1px solid ${C.border}`, background: C.panel, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, flexShrink: 0, letterSpacing: '1px' }}>TARGET:</span>
-            <span style={{ fontFamily: 'var(--sans)', fontSize: '13px', color: '#fff', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goalText || '—'}</span>
-          </div>
-          {loading && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: `rgb(${ac})`, animation: 'pulse 0.8s infinite' }} />
-              <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: `rgb(${ac})`, letterSpacing: '1px', animation: 'pulse 1s infinite' }}>PROCESSING...</span>
-            </div>
-          )}
+    // 2. LANDING / SPLASH PAGE
+    if (screen === "landing" || screen === "splash") return (
+      <div style={{ ...sContainer }}>
+        <header style={{ padding: "24px 40px", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", background: "rgba(0,0,0,0.5)" }}>
+          <div style={{ fontFamily: "var(--heading)", fontSize: "20px", color: "var(--accent)", fontWeight: "bold", letterSpacing: "2px" }}>TechPath <span style={{ color: "var(--text-h)" }}>//</span></div>
         </header>
-
-        {/* Messages */}
-        <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {loading && messages.length === 0 && (
-            <div style={{ margin: 'auto', textAlign: 'center' }}>
-              <div style={{ fontSize: '28px', color: `rgb(${ac})`, animation: 'pulse 1.2s infinite', marginBottom: '10px' }}>⬡</div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: `rgb(${ac})`, letterSpacing: '1px' }}>Establishing secure connection...</div>
-            </div>
-          )}
-          {messages.filter(m => m.stageId === activeStageId && !m.isHidden).map((m, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', animation: 'fadeInUp 0.25s ease' }}>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, marginBottom: '5px', letterSpacing: '0.5px' }}>
-                {m.role === 'user' ? 'user@host' : `sys@${mentorName}`}
-              </div>
-              {m.role === 'user' ? (
-                <div style={{
-                  maxWidth: '70%', background: C.glass, border: `1px solid rgba(${ac},0.2)`,
-                  borderRadius: '3px 3px 0 3px', padding: '12px 16px',
-                  backdropFilter: 'blur(8px)', boxShadow: `0 4px 20px rgba(0,0,0,0.4)`,
-                }}>
-                  <div style={{ fontFamily: 'var(--sans)', fontSize: '14px', lineHeight: 1.6, color: C.text }}>{m.content}</div>
-                </div>
+        <main style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "80px 20px" }}>
+          {/* HERO */}
+          <div style={{ maxWidth: "800px", textAlign: "left", marginBottom: "80px" }}>
+            <h1 style={{ fontFamily: "var(--heading)", fontSize: "clamp(40px, 6vw, 64px)", color: "#fff", lineHeight: "1.1", marginBottom: "24px", textTransform: "uppercase" }}>
+              Hackea tu <br /><span style={{ color: "var(--text-h)", textShadow: "0 0 20px rgba(0,255,102,0.3)" }}>Crecimiento Profesional</span> con IA
+            </h1>
+            <p style={{ fontFamily: "var(--sans)", fontSize: "18px", color: "rgba(255,255,255,0.7)", marginBottom: "40px", maxWidth: "600px" }}>
+              Deja de adivinar qué estudiar. El sistema analiza tus habilidades, define tu ruta estratégica y te conecta con un mentor simulado para dominar el sector IT.
+            </p>
+            <div style={{ display: "flex", gap: "20px" }}>
+              {screen === "splash" ? (
+                <button onClick={() => setScreen('apikey')} style={sBtnNeon}>Connect to Protocols // Access</button>
               ) : (
-                <div style={{ maxWidth: '85%', padding: '2px 0' }}>
-                  <MD text={m.content} ac={ac} />
-                </div>
+                <button onClick={() => savedChats.length < 3 && setScreen('wizard')} disabled={savedChats.length >= 3} style={{ ...sBtnNeon, opacity: savedChats.length >= 3 ? 0.3 : 1, cursor: savedChats.length >= 3 ? 'not-allowed' : 'pointer' }}>{savedChats.length >= 3 ? 'Slots Llenos (3/3)' : 'Generar mi Ruta (Gratis)'}</button>
               )}
             </div>
-          ))}
-          {error && (
-            <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: '#ff716c', padding: '10px', border: '1px solid rgba(255,113,108,0.3)', background: 'rgba(255,113,108,0.06)', borderRadius: '2px' }}>
-              ⚠ {error}
+            <div style={{ marginTop: "40px", fontFamily: "var(--mono)", fontSize: "12px", color: "var(--accent)" }}>
+              <span style={{ opacity: 0.5 }}>SUPPORTED STACKS:</span>
+              <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>PYTHON</span>
+              <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>AWS</span>
+              <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>REACT</span>
+              <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>LINUX</span>
+              <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>KALI</span>
+            </div>
+          </div>
+          {/* ACTIVE PATHS (Only if authenticated) */}
+          {screen === "landing" && savedChats.length > 0 && (
+            <div style={{ width: "100%", maxWidth: "800px", borderTop: "1px solid var(--border)", paddingTop: "40px" }}>
+              <h2 style={{ fontFamily: "var(--heading)", fontSize: "14px", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "20px", display: "flex", justifyContent: "space-between" }}>
+                <span>Proyectos Activos</span>
+                <span>{savedChats.length}/3 Slots</span>
+              </h2>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
+                {savedChats.map((chat) => (
+                  <div key={chat.id} onClick={() => loadChat(chat.id)} style={{ ...sGlass, padding: '18px', cursor: 'pointer', borderLeft: `2px solid rgb(${chat.ac})`, transition: 'all 0.2s' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <div style={{ fontFamily: 'var(--heading)', fontSize: '14px', fontWeight: 700, color: `rgb(${chat.ac})`, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px' }}>
+                        {chat.goalText ? `${chat.area?.icon || '◈'} ${chat.goalText.slice(0, 40)}${chat.goalText.length > 40 ? '…' : ''}` : `Misión: ${chat.area?.label || 'Custom'}`}
+                      </div>
+                      <button onClick={(e) => deleteChat(chat.id, e)} style={{ background: 'none', border: 'none', color: 'rgba(255,80,80,0.7)', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: '11px', flexShrink: 0 }}>[X]</button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'rgba(255,255,255,0.4)', background: C.card, padding: '2px 6px', borderRadius: '2px', letterSpacing: '0.5px' }}>{chat.area?.label?.toUpperCase()}</span>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted }}>·</span>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted }}>{chat.mentorName !== 'SYSTEM' ? chat.mentorName : 'Initializing…'}</span>
+                    </div>
+                    <p style={{ fontFamily: 'var(--sans)', fontSize: '12px', color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.4 }}>{chat.goalText || '—'}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-          <div ref={bottomRef} />
-        </div>
+        </main>
+      </div>
+    );
 
-        {/* Terminal Input */}
-        <div style={{ padding: '0', background: C.bg, borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', padding: '14px 20px', gap: '10px' }}>
-            <span style={{ fontFamily: 'var(--mono)', fontSize: '14px', color: `rgb(${ac})`, flexShrink: 0, animation: loading ? 'blink 1s infinite' : 'none' }}>{'>'}</span>
-            <input
-              ref={inputRef}
-              style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontFamily: 'var(--mono)', fontSize: '13px', outline: 'none', letterSpacing: '0.3px' }}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && send()}
-              placeholder={activeStage?.status === 'completed' ? '[ NODE_LOCKED ] — select next stage' : 'Enter command...'}
-              disabled={loading || activeStage?.status === 'completed'}
-            />
-            {input.trim() && (
-              <button onClick={send} disabled={loading} style={{ ...sBtnNeon, padding: '6px 14px', fontSize: '11px', flexShrink: 0 }}>
-                SEND
-              </button>
+    // 3. ONBOARDING WIZARD (Terminal Style)
+    if (screen === "wizard") return (
+      <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
+        <div style={{ ...sGlass, maxWidth: "600px", width: "100%", padding: "0" }}>
+          {/* Terminal Header */}
+          <div style={{ background: "#000", padding: "10px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: "10px" }}>
+            <div style={{ width: "12px", height: "12px", background: "rgba(255,0,0,0.5)", borderRadius: "50%" }}></div>
+            <div style={{ width: "12px", height: "12px", background: "rgba(255,255,0,0.5)", borderRadius: "50%" }}></div>
+            <div style={{ width: "12px", height: "12px", background: "var(--text-h)", borderRadius: "50%" }}></div>
+          </div>
+          {/* Terminal Body */}
+          <div style={{ padding: "30px", minHeight: "350px", display: "flex", flexDirection: "column" }}>
+            {wizardStep === 0 && (
+              <>
+                <div style={{ fontFamily: "var(--mono)", fontSize: "14px", color: "var(--accent)" }}>root@techpath:~$ ./init_protocol --select-objective</div>
+                <p style={{ fontFamily: "var(--sans)", fontSize: "15px", color: "rgba(255,255,255,0.8)", margin: "20px 0" }}>Selecciona tu dominio de especialización:</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  {AREAS.map((a) => (
+                    <button key={a.key} onClick={() => { setCustomGoal(a.goal); setArea(a); setAc(a.color); setWizardStep(1); }} style={{ ...sBtnGhost, textAlign: "left", fontSize: "14px", padding: "12px", borderColor: "var(--border)", color: "#fff" }}>
+                      <span style={{ color: `rgb(${a.color})`, marginRight: "8px" }}>{a.icon}</span> {a.label}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontFamily: "var(--mono)", color: "rgba(255,255,255,0.4)", fontSize: "12px", marginTop: "20px" }}>-- O personaliza tu entrada --</p>
+                <input type="text" style={{ ...sInput, marginTop: "10px" }} placeholder="Ej: Quiero ser pentester..." value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setWizardStep(1)} />
+                {customGoal && <button onClick={() => setWizardStep(1)} style={{ ...sBtnGhost, marginTop: "10px", width: "100%", borderColor: "var(--text-h)", color: "var(--text-h)" }}>Siguiente -{'>'}</button>}
+              </>
+            )}
+            {wizardStep === 1 && <WizardLoader area={area} customGoal={customGoal} onStart={startArea} />}
+          </div>
+        </div>
+      </div>
+    );
+
+    // 4. CHAT DASHBOARD — 3-PANEL DESKTOP
+    const activeStage = stages.find(s => s.id === activeStageId);
+    const completedCount = stages.filter(s => s.status === 'completed').length;
+    return (
+      <div style={{ height: '100vh', display: 'flex', backgroundColor: C.bg, color: C.text, overflow: 'hidden', fontFamily: 'var(--sans)' }}>
+        {/* ── LEFT SIDEBAR: SKILL TREE ── */}
+        <aside style={{ width: '260px', flexShrink: 0, borderRight: `1px solid ${C.border}`, background: C.panel, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          {/* Logo */}
+          <div style={{ padding: '20px 20px 16px', borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ fontFamily: 'var(--heading)', fontSize: '17px', fontWeight: 700, color: C.cyan, letterSpacing: '1.5px' }}>
+              TechPath <span style={{ color: C.green }}>//</span>
+            </div>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, marginTop: '4px', letterSpacing: '1px' }}>
+              SYS_{mentorName}
+            </div>
+          </div>
+          {/* Stages */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', padding: '4px 8px 10px', textTransform: 'uppercase' }}>
+              Skill_Tree_Nodes
+            </div>
+            {stages.length === 0 && (
+              <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: C.muted, padding: '8px', textAlign: 'center', opacity: 0.5 }}>
+                — awaiting mission brief —
+              </div>
+            )}
+            {stages.map((stage) => {
+              const isActive = activeStageId === stage.id;
+              const isDone = stage.status === 'completed';
+              const isLocked = stage.status === 'locked';
+              const stageColor = isDone ? C.muted : isActive ? `rgb(${ac})` : C.mid;
+              const badge = isDone ? '✓' : isActive ? '▶' : '⌁';
+              return (
+                <div key={stage.id}
+                  onClick={() => !isLocked && selectStage(stage.id)}
+                  style={{
+                    marginBottom: '4px', padding: '10px 10px', borderRadius: '3px',
+                    border: isActive ? `1px solid rgba(${ac},0.35)` : '1px solid transparent',
+                    background: isActive ? `rgba(${ac},0.05)` : 'transparent',
+                    boxShadow: isActive ? `inset 2px 0 0 rgb(${ac})` : isDone ? `inset 2px 0 0 ${C.muted}` : 'none',
+                    cursor: isLocked ? 'default' : 'pointer', color: stageColor, transition: 'all 0.15s',
+                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', opacity: 0.8 }}>{badge}</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', opacity: 0.6, letterSpacing: '0.5px' }}>
+                      {isDone ? '[DONE]' : isActive ? '[ACTIVE]' : isLocked ? '[LOCKED]' : '[READY]'}
+                    </span>
+                  </div>
+                  <div style={{ fontFamily: 'var(--sans)', fontSize: '12px', fontWeight: 500, marginTop: '3px', lineHeight: 1.3 }}>{stage.name}</div>
+                  {isActive && stage.tandas?.map((t, idx) => (
+                    <div key={idx} style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, marginTop: '5px', paddingLeft: '8px', borderLeft: `1px solid rgba(${ac},0.4)` }}>
+                      {'>'} {t.name}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+          {/* Exit button */}
+          <div style={{ padding: '12px', borderTop: `1px solid ${C.border}` }}>
+            <button onClick={() => setScreen('landing')} style={{ ...sBtnGhost, width: '100%', fontSize: '11px', padding: '8px', textAlign: 'center' }}>
+              {'< EXIT_SYSTEM'}
+            </button>
+          </div>
+        </aside>
+        {/* ── CENTER: CHAT ── */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, borderRight: `1px solid ${C.border}` }}>
+          {/* Header */}
+          <header style={{ padding: '14px 24px', borderBottom: `1px solid ${C.border}`, background: C.panel, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: C.muted, flexShrink: 0, letterSpacing: '1px' }}>TARGET:</span>
+              <span style={{ fontFamily: 'var(--sans)', fontSize: '13px', color: '#fff', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{goalText || '—'}</span>
+            </div>
+            {loading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: `rgb(${ac})`, animation: 'pulse 0.8s infinite' }} />
+                <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: `rgb(${ac})`, letterSpacing: '1px', animation: 'pulse 1s infinite' }}>PROCESSING...</span>
+              </div>
+            )}
+          </header>
+          {/* Messages */}
+          <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            {loading && messages.length === 0 && (
+              <div style={{ margin: 'auto', textAlign: 'center' }}>
+                <div style={{ fontSize: '28px', color: `rgb(${ac})`, animation: 'pulse 1.2s infinite', marginBottom: '10px' }}>⬡</div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: `rgb(${ac})`, letterSpacing: '1px' }}>Establishing secure connection...</div>
+              </div>
+            )}
+            {messages.filter(m => m.stageId === activeStageId && !m.isHidden).map((m, i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', animation: 'fadeInUp 0.25s ease' }}>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, marginBottom: '5px', letterSpacing: '0.5px' }}>
+                  {m.role === 'user' ? 'user@host' : `sys@${mentorName}`}
+                </div>
+                {m.role === 'user' ? (
+                  <div style={{
+                    maxWidth: '70%', background: C.glass, border: `1px solid rgba(${ac},0.2)`,
+                    borderRadius: '3px 3px 0 3px', padding: '12px 16px',
+                    backdropFilter: 'blur(8px)', boxShadow: `0 4px 20px rgba(0,0,0,0.4)`,
+                  }}>
+                    <div style={{ fontFamily: 'var(--sans)', fontSize: '14px', lineHeight: 1.6, color: C.text }}>{m.content}</div>
+                  </div>
+                ) : (
+                  <div style={{ maxWidth: '85%', padding: '2px 0' }}>
+                    <MD text={m.content} ac={ac} />
+                  </div>
+                )}
+              </div>
+            ))}
+            {error && (
+              <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: '#ff716c', padding: '10px', border: '1px solid rgba(255,113,108,0.3)', background: 'rgba(255,113,108,0.06)', borderRadius: '2px' }}>
+                ⚠ {error}
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+          {/* Terminal Input */}
+          <div style={{ padding: '0', background: C.bg, borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', padding: '14px 20px', gap: '10px' }}>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: '14px', color: `rgb(${ac})`, flexShrink: 0, animation: loading ? 'blink 1s infinite' : 'none' }}>{'>'}</span>
+              <input
+                ref={inputRef}
+                style={{ flex: 1, background: 'transparent', border: 'none', color: '#fff', fontFamily: 'var(--mono)', fontSize: '13px', outline: 'none', letterSpacing: '0.3px' }}
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && send()}
+                placeholder={activeStage?.status === 'completed' ? '[ NODE_LOCKED ] — select next stage' : 'Enter command...'}
+                disabled={loading || activeStage?.status === 'completed'}
+              />
+              {input.trim() && (
+                <button onClick={send} disabled={loading} style={{ ...sBtnNeon, padding: '6px 14px', fontSize: '11px', flexShrink: 0 }}>
+                  SEND
+                </button>
+              )}
+            </div>
+          </div>
+        </main>
+        {/* ── RIGHT INTEL PANEL ── */}
+        <aside style={{ width: '280px', flexShrink: 0, background: C.panel, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+          {/* Header */}
+          <div style={{ padding: '20px 16px 14px', borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.cyan, letterSpacing: '3px', textTransform: 'uppercase' }}>◈ Intel Panel</div>
+          </div>
+          <div style={{ flex: 1, padding: '14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Validated Goal */}
+            <div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>Objetivo Validado</div>
+              <div style={{ fontFamily: 'var(--sans)', fontSize: '12px', color: goalText ? '#fff' : C.muted, lineHeight: 1.5, padding: '10px', background: C.elevated, borderRadius: '2px', borderLeft: `2px solid ${C.cyan}` }}>
+                {goalText || '— awaiting validation —'}
+              </div>
+            </div>
+            {/* Operator Profile */}
+            <div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>Perfil del Operador</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[
+                  { label: 'AREA', value: area?.label || '—' },
+                  { label: 'STACK', value: area?.icon ? `${area.icon} ${area.key?.toUpperCase()}` : '—' },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: C.card, borderRadius: '2px' }}>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '1px' }}>{label}</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: `rgb(${ac})`, fontWeight: 500 }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Progress */}
+            {stages.length > 0 && (
+              <div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Progreso</span>
+                  <span style={{ color: `rgb(${ac})` }}>{completedCount}/{stages.length}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {stages.map(s => {
+                    const isDone = s.status === 'completed';
+                    const isAct = s.id === activeStageId;
+                    return (
+                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '1px', flexShrink: 0, background: isDone ? C.green : isAct ? `rgb(${ac})` : C.elevated, boxShadow: isAct ? `0 0 8px rgb(${ac})` : 'none', animation: isAct ? 'glow-pulse 2s infinite' : 'none' }} />
+                        <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: isDone ? C.mid : isAct ? '#fff' : C.muted, lineHeight: 1.3, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
-        </div>
-      </main>
+        </aside>
+      </div>
+    );
+  };
 
-      {/* ── RIGHT INTEL PANEL ── */}
-      <aside style={{ width: '280px', flexShrink: 0, background: C.panel, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-        {/* Header */}
-        <div style={{ padding: '20px 16px 14px', borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.cyan, letterSpacing: '3px', textTransform: 'uppercase' }}>◈ Intel Panel</div>
-        </div>
-
-        <div style={{ flex: 1, padding: '14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Validated Goal */}
-          <div>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>Objetivo Validado</div>
-            <div style={{ fontFamily: 'var(--sans)', fontSize: '12px', color: goalText ? '#fff' : C.muted, lineHeight: 1.5, padding: '10px', background: C.elevated, borderRadius: '2px', borderLeft: `2px solid ${C.cyan}` }}>
-              {goalText || '— awaiting validation —'}
-            </div>
-          </div>
-
-          {/* Operator Profile */}
-          <div>
-            <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase' }}>Perfil del Operador</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {[
-                { label: 'AREA', value: area?.label || '—' },
-                { label: 'STACK', value: area?.icon ? `${area.icon} ${area.key?.toUpperCase()}` : '—' },
-              ].map(({ label, value }) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 10px', background: C.card, borderRadius: '2px' }}>
-                  <span style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '1px' }}>{label}</span>
-                  <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: `rgb(${ac})`, fontWeight: 500 }}>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Progress */}
-          {stages.length > 0 && (
-            <div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: C.muted, letterSpacing: '2px', marginBottom: '8px', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Progreso</span>
-                <span style={{ color: `rgb(${ac})` }}>{completedCount}/{stages.length}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {stages.map(s => {
-                  const isDone = s.status === 'completed';
-                  const isAct = s.id === activeStageId;
-                  return (
-                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '1px', flexShrink: 0, background: isDone ? C.green : isAct ? `rgb(${ac})` : C.elevated, boxShadow: isAct ? `0 0 8px rgb(${ac})` : 'none', animation: isAct ? 'glow-pulse 2s infinite' : 'none' }} />
-                      <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: isDone ? C.mid : isAct ? '#fff' : C.muted, lineHeight: 1.3, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </aside>
-
-    </div>
+  return (
+    <>
+      {renderContent()}
+      <Analytics />
+    </>
   );
 }
