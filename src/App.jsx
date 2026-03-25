@@ -3,10 +3,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 // ─── GROQ API CALL ───────────────────────────────────────────────────────────
 async function geminiCall(history, systemPrompt) {
   const API_KEY = localStorage.getItem("tp_groq_key");
-
-  if (!API_KEY) {
-    throw new Error("No se encontró la API key. Recarga la página.");
-  }
+  if (!API_KEY) throw new Error("No se encontró la API key. Recarga la página.");
 
   const messages = [
     { role: "system", content: systemPrompt },
@@ -23,36 +20,28 @@ async function geminiCall(history, systemPrompt) {
       "Authorization": `Bearer ${API_KEY}`,
     },
     body: JSON.stringify({
-      model: "mixtral-8x7b-32768",
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
       messages,
-      max_tokens: 4000,
-      temperature: 0.7,
+      max_tokens: 3000,
+      temperature: 0.5, 
+      top_p: 1          
     }),
   });
 
   const data = await res.json();
-
   if (!res.ok) {
     let msg = data?.error?.message || `Error HTTP ${res.status}`;
-
-    // 🔍 Detector de límite de tokens humanizado
     if (msg.includes("Rate limit reached") && msg.includes("tokens per day")) {
       const timeMatch = msg.match(/try again in ([\w\d\.]+)/i);
       const waitTime = timeMatch ? timeMatch[1] : "un momento";
-      
-      const humanTime = waitTime
-        .replace('h', ' horas')
-        .replace('m', ' min')
-        .replace('s', ' seg');
-
-      msg = `Tu límite de tokens diarios ha concluido. Como mentor, necesito un descanso para procesar todo lo que hemos avanzado. Por favor, vuelve mañana o en aproximadamente ${humanTime}.`;
+      const humanTime = waitTime.replace('h', ' horas').replace('m', ' min').replace('s', ' seg');
+      msg = `Límite diario excedido. El servidor requiere enfriamiento de subsistemas. Auto-reinicio en ${humanTime}.`;
     }
-
     throw new Error(msg);
   }
 
   const text = data?.choices?.[0]?.message?.content || "";
-  if (!text) throw new Error("Sin respuesta. Intenta de nuevo.");
+  if (!text) throw new Error("Error de telemetría. Sin respuesta.");
   return text;
 }
 
@@ -64,21 +53,27 @@ Eres un Mentor experto con más de 20 años de experiencia, pero tu enfoque es e
 ${userProfile ? `👤 PERFIL DEL USUARIO: ${userProfile}` : ""}
 
 ---
----
-🛠️ PROTOCOLO DE COMANDOS (Obligatorio para manejar la UI):
+🛠️ PROTOCOLO DE COMANDOS PARA LA UI (OBLIGATORIO PARA QUE LA APP FUNCIONE):
 
-1. DEFINIR RUTA INICIAL: Tras validar el objetivo, tu primer mensaje DEBE incluir:
-   ESTRUCTURA_PROYECTO: ["Nombre Etapa 1", "Nombre Etapa 2", ...] (Crea las que consideres necesarias).
+⛔ REGLA DE SILENCIO DE RUTA (CANDADO DE COMANDOS):
+Los comandos ESTRUCTURA_PROYECTO y NUEVA_TANDA están **BLOQUEADOS** hasta que el usuario haya respondido claramente a TRES datos obligatorios:
+  a) Su **Nombre**.
+  b) Su **Nivel de Experiencia Actual** (Básico / Intermedio / Avanzado).
+  c) Su **Tiempo Disponible** para estudiar (horas por semana).
+Si detectas una meta válida pero NO conoces estos 3 datos, tu ÚNICA misión es presentarte y lanzar el cuestionario de diagnóstico (ver sección 🚀 PRIMER MENSAJE). Cualquier intento de generar un PATH, ESTRUCTURA_PROYECTO o NUEVA_TANDA sin estos datos se considera un **FALLO DE PROTOCOLO** grave.
 
-2. INICIAR ETAPA: Para activar el chat de una etapa:
-   INICIAR_ETAPA: [ID o Nombre]
+1. DEFINIR RUTA INICIAL: Solo DESPUÉS de completar RECOLECCIÓN_PERFIL (los 3 datos arriba), analiza PROFUNDAMENTE cuántas etapas requiere esta meta. Tu respuesta DEBE incluir:
+   ESTRUCTURA_PROYECTO: ["Nombre Etapa 1", "Nombre Etapa 2", "Nombre Etapa 3"...] (Crea tantas etapas como dicte la lógica profesional).
 
-3. CREAR TANDA: Dentro de una etapa, organiza el estudio por tandas:
+2. CREAR TANDA: Analiza el ritmo. ¿La etapa necesita 1 tanda masiva o 3 pequeñas? Al iniciar una, envía:
    NUEVA_TANDA: [Nombre de la Tanda]
    (Aquí usas el formato de PATHS habitual).
 
-4. DESBLOQUEAR SIGUIENTE: Cuando el usuario confirme completar la etapa actual:
-   DESBLOQUEAR_ETAPA: [Nombre de la siguiente]
+3. CERRAR ETAPA Y DESBLOQUEAR: Cuando el usuario termine la ÚLTIMA tanda de la etapa actual:
+   DESBLOQUEAR_ETAPA: [Nombre de la siguiente etapa]
+   *(IMPORTANTE: Inmediatamente después de este comando, despídete felicitándolo y dile explícitamente: "He desbloqueado la siguiente etapa. Por favor, selecciónala en el menú lateral izquierdo para continuar nuestro chat allá").*
+
+4. RECEPCIÓN DE NUEVA ETAPA: Si recibes el aviso del [SISTEMA] de que el usuario entró a una nueva etapa, dale la bienvenida a ese nuevo espacio, haz un resumen de 1 línea de lo logrado antes, y lanza su primera NUEVA_TANDA.
 
 ---
 📌 REGLAS DE CONTEXTO COMPARTIDO:
@@ -105,9 +100,10 @@ Analiza el "${userGoal}" y actúa estrictamente bajo este bucle lógico:
    "¡Me encantaría empezar! Pero para serte útil de verdad, dime: ¿Cómo te llamas? y ¿Cuál es ese objetivo profesional o técnico que quieres conquistar?"
 
 4. SI EL OBJETIVO ES VÁLIDO:
-   - ACCIÓN: Tu respuesta DEBE empezar con esta línea exacta:
+   - ACCIÓN: Tu respuesta DEBE empezar con esta línea exacta (Sin comillas ni texto extra en esa línea):
      META_VALIDADA: [Escribe aquí el nombre de la meta técnica, ej: Desarrollador Frontend]
-   - Luego, adopta tu nombre de Mentor (ej. CloudMentor) y salta a la sección "🚀 PRIMER MENSAJE".
+   - Luego, adopta tu nombre de Mentor (ej. CloudMentor) y salta a la sección "🚀 PRIMER MENSAJE" para iniciar la RECOLECCIÓN_PERFIL.
+   - ⛔ NO incluyas ESTRUCTURA_PROYECTO ni NUEVA_TANDA en este mensaje. El siguiente estado obligatorio es RECOLECCIÓN_PERFIL, no generación de rutas.
 
 ---
 
@@ -117,7 +113,7 @@ Una vez validado el objetivo, eres un chat conversacional activo. Guías en DOS 
 ---
 
 ## 📌 LAS 18 REGLAS DE ORO (RIGOR CON EMPATÍA)
-
+0. **MODO DESARROLLADOR:** Si recibes un mensaje que empieza con [SISTEMA - DEVELOPER BYPASS], es una orden directa del creador. No pidas confirmaciones ni verifiques cursos. Ejecuta el comando DESBLOQUEAR_ETAPA de inmediato y pasa a la despedida
 1. **PROGRESIÓN BLOQUEADA:** Celebra los logros, pero mantén el orden. No desbloquees la siguiente tanda hasta que el usuario confirme haber terminado la actual.
 2. **FORMATO DE RECOMENDACIÓN:** Es OBLIGATORIO usar la estructura visual con emojis detallada en la sección "FORMATO EXACTO" más abajo.
 3. **PRIORIDAD GRATUITA:** Cuida el bolsillo del usuario. Solo recomienda pagos si son una inversión transformadora.
@@ -165,58 +161,52 @@ PATH 1 — [Nombre exacto y oficial del curso/ruta]
 *(Usa también los bloques 🏆 CERTIFICACIÓN RECOMENDADA, 📁 EVIDENCIA A CONSTRUIR, 🤖 HABILIDAD DE IA y 🧠 EJERCICIO DE MENTALIDAD cuando corresponda, respetando siempre los emojis iniciales).*
 ---
 
-## 🚀 PRIMER MENSAJE (Solo tras validar objetivo)
-1. Saluda cálidamente (usa su nombre si ya lo dio).
-2. Presenta el MAPA COMPLETO. Define qué hitos técnicos separan la Fase A de la Fase B para este camino específico.
-3. Haz el cuestionario de personalización, pero **SOLO pregunta lo que el usuario aún no haya mencionado**.
-No generes la primera tanda sin conocer estas respuestas.
+## 🚀 PRIMER MENSAJE (Solo tras validar objetivo) — ESTADO: RECOLECCIÓN_PERFIL
+Este mensaje es EXCLUSIVAMENTE de diagnóstico humano. NO generes rutas, paths ni estructura aquí.
+1. Saluda cálidamente (usa su nombre si ya lo dio). Adopta tu nombre de Mentor.
+2. Explica brevemente por qué necesitas conocerlo antes de trazar su ruta: "Para no aburrirte con lo que ya sabes ni frustrarte con lo que aún no estás listo para ver, necesito calibrar tu punto de partida."
+3. Lanza el cuestionario de diagnóstico. Pregunta SOLO lo que el usuario aún no haya mencionado de estos 3 datos obligatorios:
+   - **¿Cómo te llamas?** (si no lo ha dicho)
+   - **¿Cuál es tu nivel de experiencia actual en este campo?** (Básico: nunca he tocado el tema / Intermedio: tengo bases pero me falta práctica / Avanzado: ya trabajo en esto y quiero especializarme)
+   - **¿Cuántas horas a la semana puedes dedicarle al estudio?**
+4. NO presentes el mapa de carrera, NO uses ESTRUCTURA_PROYECTO, NO generes ningún PATH. Solo el cuestionario.
+5. Cuando el usuario responda los 3 datos, ENTONCES y SOLO ENTONCES presenta el MAPA COMPLETO con las Fases A y B, incluye ESTRUCTURA_PROYECTO y lanza la primera NUEVA_TANDA adaptada a su nivel real.
 `;
 
-// ─── ÁREAS DISPONIBLES ────────────────────────────────────────────────────────
+// ─── DATA ─────────────────────────────────────────────────────────────────────
 const AREAS = [
-  { key: "cyber",      icon: "🛡️", label: "Ciberseguridad",   color: "0,220,120",   goal: "Quiero ser analista de ciberseguridad SOC y especializarme en Blue Team" },
-  { key: "frontend",   icon: "⚛️", label: "Front-end Dev",     color: "97,218,251",  goal: "Quiero ser desarrollador front-end, dominar React y el ecosistema moderno" },
-  { key: "devops",     icon: "⚙️", label: "DevOps / SRE",            color: "255,160,50",  goal: "Quiero trabajar en DevOps, aprender CI/CD, Kubernetes y cultura SRE" },
-  { key: "networking", icon: "🌐", label: "Redes",       color: "50,160,255",  goal: "Quiero certificarme en redes, empezar con CCNA y llegar a Network Engineer" },
-  { key: "sysadmin",   icon: "🖥️", label: "Sysadmin / Linux",         color: "255,200,50",  goal: "Quiero ser administrador de sistemas Linux y gestionar servidores" },
-  { key: "ai",         icon: "🤖", label: "IA / Machine Learning",    color: "180,100,255", goal: "Quiero aprender IA y machine learning, desde Python hasta modelos" },
-  { key: "cloud",      icon: "☁️", label: "Cloud Engineer",           color: "100,190,255", goal: "Quiero ser Cloud Engineer, certificarme en AWS y gestionar nube" },
-  { key: "backend",    icon: "🗄️", label: "Backend / APIs",           color: "255,100,150", goal: "Quiero ser desarrollador backend y construir APIs robustas" },
-  { key: "mobile",     icon: "📱", label: "Mobile Dev",         color: "255,140,80",  goal: "Quiero desarrollar apps móviles, aprender React Native o Flutter" },
-  { key: "pentest",    icon: "🔐", label: "Pentesting",    color: "255,80,80",   goal: "Quiero ser pentester, aprender hacking ético y CTFs" },
+  { key: "cyber",      icon: "🛡️", label: "Ciberseguridad",   color: "0,255,102", goal: "Quiero ser analista de ciberseguridad SOC y especializarme en Blue Team" },
+  { key: "frontend",   icon: "⚛️", label: "Front-end Dev",    color: "0,229,255", goal: "Quiero ser desarrollador front-end, dominar React y el ecosistema moderno" },
+  { key: "devops",     icon: "⚙️", label: "DevOps / SRE",     color: "0,255,102", goal: "Quiero trabajar en DevOps, aprender CI/CD, Kubernetes y cultura SRE" },
+  { key: "networking", icon: "🌐", label: "Redes",            color: "0,229,255", goal: "Quiero certificarme en redes, empezar con CCNA y llegar a Network Engineer" },
+  { key: "sysadmin",   icon: "🖥️", label: "Sysadmin / Linux", color: "0,255,102", goal: "Quiero ser administrador de sistemas Linux y gestionar servidores" },
+  { key: "ai",         icon: "🤖", label: "IA / Backend",     color: "0,229,255", goal: "Quiero aprender IA y machine learning, desde Python hasta modelos" },
+  { key: "pentest",    icon: "🔐", label: "Pentesting",       color: "0,255,102", goal: "Quiero ser pentester, aprender hacking ético y CTFs" },
 ];
 
-const DEFAULT_PHASES = [
-  "Etapa 1 — Fundamentos",
-  "Etapa 2 — Intermedio",
-  "Etapa 3 — Avanzado",
-  "Etapa 4 — Profesional",
-  "Etapa 5 — Especialización",
-];
-
-// ─── MARKDOWN RENDERER ───────────────────────────────────────────────────────
+// ─── MARKDOWN COMPONENT ───────────────────────────────────────────────────────
 function MD({ text, ac }) {
   if (!text) return null;
   return (
-    <div>
+    <div style={{ fontFamily: "var(--sans)", fontSize: "14px", lineHeight: "1.6" }}>
       {text.split("\n").map((line, i) => {
         if (/^━{3,}$|^─{3,}$/.test(line.trim()))
-          return <hr key={i} style={{ border: "none", borderTop: `1px solid rgba(${ac},.18)`, margin: "8px 0" }} />;
+          return <hr key={i} style={{ border: "none", borderTop: `1px solid rgba(${ac},.3)`, margin: "10px 0" }} />;
         if (line.startsWith("## "))
-          return <div key={i} style={{ color: `rgb(${ac})`, fontSize: 11, fontFamily: "monospace", fontWeight: 700, margin: "14px 0 5px", letterSpacing: 1, textTransform: "uppercase" }}>{line.slice(3)}</div>;
+          return <div key={i} style={{ color: `rgb(${ac})`, fontFamily: "var(--heading)", fontSize: "14px", fontWeight: 700, margin: "16px 0 8px", textTransform: "uppercase" }}>{line.slice(3)}</div>;
         if (/^(PATH \d|🧭|📍|🎯|🏆|📁|🤖|💻|🧠|💼|⚠️|🗺️|📋|FASE)/.test(line.trim()) && line.trim())
-          return <div key={i} style={{ margin: "8px 0 3px", fontWeight: 600, color: "rgba(240,255,248,.95)", fontSize: 13 }}>{fmt(line, ac)}</div>;
+          return <div key={i} style={{ margin: "12px 0 4px", fontWeight: 600, color: "#fff", fontFamily: "var(--heading)", fontSize: "13px" }}>{fmt(line, ac)}</div>;
         if (line.startsWith("  ") && line.trim())
-          return <div key={i} style={{ paddingLeft: 14, borderLeft: `2px solid rgba(${ac},.22)`, margin: "2px 0 2px 6px", color: "rgba(180,218,200,.72)", fontSize: 12.5 }}>{fmt(line.trim(), ac)}</div>;
+          return <div key={i} style={{ paddingLeft: 12, borderLeft: `2px solid rgba(${ac},.4)`, margin: "4px 0 4px 8px", color: "rgba(255,255,255,.8)", fontSize: "13px" }}>{fmt(line.trim(), ac)}</div>;
         if (/^[-*→] /.test(line))
           return (
-            <div key={i} style={{ display: "flex", gap: 7, margin: "2px 0", paddingLeft: 4 }}>
-              <span style={{ color: `rgb(${ac})`, fontSize: 9, marginTop: 5, flexShrink: 0 }}>▸</span>
-              <span style={{ fontSize: 13, color: "rgba(190,220,206,.8)", lineHeight: 1.6 }}>{fmt(line.slice(2), ac)}</span>
+            <div key={i} style={{ display: "flex", gap: 8, margin: "4px 0" }}>
+              <span style={{ color: `rgb(${ac})`, fontSize: "12px", flexShrink: 0 }}>▹</span>
+              <span style={{ color: "rgba(255,255,255,.85)" }}>{fmt(line.slice(2), ac)}</span>
             </div>
           );
-        if (!line.trim()) return <div key={i} style={{ height: 5 }} />;
-        return <p key={i} style={{ margin: "2px 0", fontSize: 13, lineHeight: 1.7, color: "rgba(200,225,212,.83)" }}>{fmt(line, ac)}</p>;
+        if (!line.trim()) return <div key={i} style={{ height: 8 }} />;
+        return <p key={i} style={{ margin: "4px 0", color: "rgba(255,255,255,.9)" }}>{fmt(line, ac)}</p>;
       })}
     </div>
   );
@@ -225,477 +215,587 @@ function MD({ text, ac }) {
 function fmt(text, ac) {
   return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/).map((p, i) => {
     if (p.startsWith("**") && p.endsWith("**"))
-      return <strong key={i} style={{ color: "rgba(240,255,248,1)", fontWeight: 700 }}>{p.slice(2, -2)}</strong>;
+      return <strong key={i} style={{ color: "#fff", fontWeight: 600 }}>{p.slice(2, -2)}</strong>;
     if (p.startsWith("`") && p.endsWith("`"))
-      return <code key={i} style={{ fontFamily: "monospace", fontSize: 11, background: `rgba(${ac},.1)`, color: `rgb(${ac})`, padding: "1px 5px", borderRadius: 3 }}>{p.slice(1, -1)}</code>;
+      return <code key={i} style={{ fontFamily: "var(--mono)", fontSize: "13px", background: `rgba(${ac},.15)`, color: `rgb(${ac})`, padding: "2px 6px", borderRadius: "2px", border: `1px solid rgba(${ac},.3)` }}>{p.slice(1, -1)}</code>;
     return p;
   });
 }
 
-// ─── APP ─────────────────────────────────────────────────────────────────────
-export default function App() {
-  // ── ESTADOS DE LA API KEY ──
-  const [keyInput,   setKeyInput]   = useState("");
-  const [keyError,   setKeyError]   = useState("");
-  const [keyLoading, setKeyLoading] = useState(false);
-  const keyRef = useRef(null);
-
-  // ── ESTADOS DE GESTIÓN DE CHATS (SLOTS) ──
-  const [savedChats, setSavedChats] = useState([]);
-  const [currentChatId, setCurrentChatId] = useState(null);
-
-  // Determina la pantalla inicial
-  const [screen, setScreen] = useState(() => {
-    if (!localStorage.getItem("tp_groq_key")) return "apikey";
-    return "mainmenu"; 
-  });
-
-  // ── ESTADOS DEL CHAT ACTUAL ──
-  const [area,        setArea]        = useState(null);
-  const [ac,          setAc]          = useState("0,220,120");
-  const [messages,    setMessages]    = useState([]);
-  const [input,       setInput]       = useState("");
-  const [loading,     setLoading]     = useState(false);
-  const [error,       setError]       = useState("");
-  const [sideOpen,    setSideOpen]    = useState(false);
-  const [mentorName,  setMentorName]  = useState("TechPathAI");
-  const [goalText,    setGoalText]    = useState("");
-  const [customGoal,  setCustomGoal]  = useState("");
-
-  const bottomRef = useRef(null);
-  const inputRef  = useRef(null);
-
-  const scrollBottom = () =>
-    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
-
-  // ── EFECTO: Cargar chats guardados al inicio ──
+// ─── WIZARD LOADER (safe for React 18 StrictMode) ───────────────────────────
+function WizardLoader({ area, customGoal, onStart }) {
   useEffect(() => {
-    const chats = localStorage.getItem("tp_saved_chats");
-    if (chats) {
-      setSavedChats(JSON.parse(chats));
-    }
-  }, []);
-
-  // ── EFECTO: Guardar chats automáticamente cuando cambian ──
-  useEffect(() => {
-    if (screen !== "apikey") {
-      localStorage.setItem("tp_saved_chats", JSON.stringify(savedChats));
-    }
-  }, [savedChats, screen]);
-
-  // ── EFECTO: Foco en input de API Key ──
-  useEffect(() => {
-    if (screen === "apikey") keyRef.current?.focus();
-  }, [screen]);
-
-  // ── FUNCIÓN: Guardar y Validar API Key ──
-  const saveKey = useCallback(async () => {
-    const k = keyInput.trim();
-    if (!k) return;
-    setKeyLoading(true);
-    setKeyError("");
-    try {
-      localStorage.setItem("tp_groq_key", k);
-      await geminiCall(
-        [{ role: "user", content: "Responde solo: OK" }],
-        "Eres un asistente. Responde solo la palabra OK."
-      );
-      setScreen("mainmenu");
-    } catch (e) {
-      localStorage.removeItem("tp_groq_key");
-      setKeyError("Key inválida. Verifica que empiece con gsk_ y vuelve a intentarlo.");
-    } finally {
-      setKeyLoading(false);
-    }
-  }, [keyInput]);
-
-  // ── FUNCIÓN: Cargar un chat existente ──
-  const loadChat = useCallback((chatId) => {
-    const chat = savedChats.find(c => c.id === chatId);
-    if (!chat) return;
-
-    setCurrentChatId(chat.id);
-    setArea(chat.area);
-    setAc(chat.ac);
-    setMessages(chat.messages);
-    setMentorName(chat.mentorName);
-    setGoalText(chat.goalText);
-    setScreen("chat");
-    setSideOpen(false);
-    scrollBottom();
-  }, [savedChats]);
-
-  // ── FUNCIÓN: Crear un nuevo chat (Slot) ──
-  const createNewChat = useCallback(() => {
-    if (savedChats.length >= 3) {
-      alert("⚠️ Has alcanzado el límite de 3 rutas guardadas. Elimina una para empezar otra.");
-      return;
-    }
-    setCurrentChatId(null);
-    setMessages([]);
-    setArea(null);
-    setAc("0,220,120");
-    setCustomGoal("");
-    setScreen("welcome");
-  }, [savedChats.length]);
-
-  // ── FUNCIÓN: Eliminar un chat ──
-  const deleteChat = useCallback((chatId, e) => {
-    e.stopPropagation(); 
-    if (window.confirm("¿Estás seguro de que quieres eliminar esta ruta para siempre?")) {
-      setSavedChats(prev => prev.filter(c => c.id !== chatId));
-      if (currentChatId === chatId) {
-        setScreen("mainmenu");
-        setCurrentChatId(null);
-      }
-    }
-  }, [currentChatId]);
-
-  // ── FUNCIÓN: Iniciar nueva ruta ──
-  const startArea = useCallback(async (selectedArea, customText = "") => {
-    const goal = customText || selectedArea.goal;
-    const newChatId = Date.now().toString();
-    
-    // Nueva estructura jerárquica
-    const newChatObject = { 
-      id: newChatId, 
-      area: selectedArea, 
-      ac: selectedArea.color, 
-      goalText: goal, 
-      mentorName: "TechPathAI", 
-      stages: [], // <--- Aquí guardaremos lo que la IA defina
-      currentStageId: null,
-      messages: [], // Historial global para el contexto
-      createdAt: new Date().toISOString() 
-    };
-
-    setError("");
-    setLoading(true);
-    setArea(selectedArea);
-    setAc(selectedArea.color);
-    setGoalText(goal);
-    setMessages([]);
-    setMentorName("TechPathAI");
-    setCurrentChatId(newChatId);
-    setScreen("chat");
-
-    try {
-      const res = await geminiCall([{ role: "user", content: goal }], getSystemPrompt(goal));
-      
-      let finalMsg = res;
-      let newGoal = goal;
-      let newMentor = "TechPathAI";
-
-      if (res.includes("META_VALIDADA:")) {
-        const matchMeta = res.match(/META_VALIDADA:\s*([^\n\r]*)/i);
-        if (matchMeta) newGoal = matchMeta[1].trim();
-        newMentor = "Mentor Senior"; 
-        const matchMentor = res.match(/soy\s+([^,.\n]*[Mm]entor|[^,.\n]*[Cc]oach)/i);
-        if (matchMentor) newMentor = matchMentor[1].trim();
-        finalMsg = res.replace(/META_VALIDADA:[^\n\r]*\n?/, "").trim();
-      }
-
-      setMentorName(newMentor);
-      setGoalText(newGoal);
-      const initialMessages = [{ role: "assistant", content: finalMsg }];
-      setMessages(initialMessages);
-
-      setSavedChats(prev => [{ ...newChatObject, mentorName: newMentor, goalText: newGoal, messages: initialMessages }, ...prev]);
-    } catch (e) {
-      setError(e.message);
-      const errorMsg = [{ role: "assistant", content: `⚠️ Error: ${e.message}` }];
-      setMessages(errorMsg);
-      setSavedChats(prev => [{ ...newChatObject, messages: errorMsg }, ...prev]);
-    } finally {
-      setLoading(false);
-      scrollBottom();
-    }
-  }, [mentorName]);
-
-  // ── FUNCIÓN: Enviar mensaje ──
-  const send = useCallback(async () => {
-    const text = input.trim();
-    if (!text || loading) return;
-    setInput("");
-    setError("");
-    const next = [...messages, { role: "user", content: text }];
-    setMessages(next);
-    setLoading(true);
-    scrollBottom();
-
-    setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: next } : c));
-
-    try {
-      const res = await geminiCall(next, getSystemPrompt(goalText));
-      
-      let finalMsg = res;
-      let newMentor = mentorName;
-      let newGoal = goalText;
-
-      if (res.includes("META_VALIDADA:")) {
-        const matchMeta = res.match(/META_VALIDADA:\s*([^\n\r]*)/i);
-        if (matchMeta) newGoal = matchMeta[1].trim();
-        if (newMentor === "TechPathAI") newMentor = "Mentor Senior";
-        const matchMentor = res.match(/soy\s+([^,.\n]*[Mm]entor|[^,.\n]*[Cc]oach)/i);
-        if (matchMentor) newMentor = matchMentor[1].trim();
-        finalMsg = res.replace(/META_VALIDADA:[^\n\r]*\n?/, "").trim();
-      }
-
-      const updatedMessages = [...next, { role: "assistant", content: finalMsg }];
-      setMessages(updatedMessages);
-      setMentorName(newMentor);
-      setGoalText(newGoal);
-
-      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: updatedMessages, mentorName: newMentor, goalText: newGoal } : c));
-    } catch (e) {
-      setError(e.message);
-      const finalMessages = [...next, { role: "assistant", content: `⚠️ ${e.message}` }];
-      setMessages(finalMessages);
-      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: finalMessages } : c));
-    } finally {
-      setLoading(false);
-      scrollBottom();
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [input, loading, messages, goalText, currentChatId, mentorName]);
-
-  // ── PANTALLA: API KEY ──
-  if (screen === "apikey") return (
-    <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <style>{CSS}</style>
-      <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 28 }}>
-        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 36 }} className="tp-float">⬡</div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, fontFamily: "monospace", color: "#00dc78", margin: 0, letterSpacing: 1 }}>TechPath</h1>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,.3)", margin: 0 }}>AI Career Mentor</p>
-        </div>
-        <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 16, padding: "28px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
-          <div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: "#fff", margin: "0 0 6px", fontFamily: "monospace" }}>Ingresa tu API Key de Groq</h2>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,.32)", margin: 0, lineHeight: 1.6 }}>TechPath usa tu propia key. Es gratuita y se guarda solo en tu navegador.</p>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            <label style={{ fontSize: 10, fontFamily: "monospace", color: "rgba(255,255,255,.25)", letterSpacing: 1 }}>API KEY DE GROQ</label>
-            <input ref={keyRef} type="password" style={{ background: "rgba(255,255,255,.04)", border: `1px solid ${keyError ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.1)"}`, borderRadius: 10, padding: "12px 14px", color: "#e8f4ec", fontSize: 14, fontFamily: "monospace", outline: "none", letterSpacing: 1, transition: "border .2s" }} value={keyInput} onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }} onKeyDown={(e) => e.key === "Enter" && saveKey()} placeholder="gsk_..." disabled={keyLoading} />
-            {keyError && <p style={{ fontSize: 12, color: "#ff8080", margin: 0, lineHeight: 1.5 }}>{keyError}</p>}
-          </div>
-          <button onClick={saveKey} disabled={!keyInput.trim() || keyLoading} style={{ padding: "13px", borderRadius: 11, border: "none", background: !keyInput.trim() || keyLoading ? "rgba(255,255,255,.05)" : "linear-gradient(135deg,#00dc78,#00aa55)", color: !keyInput.trim() || keyLoading ? "rgba(255,255,255,.2)" : "#030a06", cursor: !keyInput.trim() || keyLoading ? "default" : "pointer", fontSize: 14, fontWeight: 700, fontFamily: "monospace", transition: "all .2s" }}>
-            {keyLoading ? "Verificando..." : "Acceder →"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── PANTALLA: MENÚ PRINCIPAL ──
-  if (screen === "mainmenu") return (
-    <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column" }}>
-      <style>{CSS}</style>
-      <header style={{ width: "100%", padding: "15px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 20, color: "#00dc78" }}>⬡</span>
-        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "#00dc78", letterSpacing: 1 }}>TechPath</span>
-      </header>
-      <div style={{ width: "100%", maxWidth: 800, margin: "0 auto", padding: "40px 20px 60px", display: "flex", flexDirection: "column", gap: 35 }}>
-        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 10 }}>
-          <h1 style={{ fontSize: "clamp(24px,6vw,36px)", fontWeight: 800, fontFamily: "monospace", color: "#fff", margin: 0 }}>¿Qué quieres hacer hoy?</h1>
-          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", margin: 0 }}>Continúa una ruta existente o empieza una nueva aventura técnica.</p>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 10, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <h2 style={{ fontSize: 11, fontFamily: "monospace", color: "rgba(255,255,255,.3)", letterSpacing: 2, fontWeight: 700, margin: 0 }}>TUS HOJAS DE RUTA</h2>
-            <span style={{ fontSize: 11, color: savedChats.length >= 3 ? "#ff8080" : "rgba(255,255,255,.2)", fontWeight: 600, fontFamily: "monospace" }}>{savedChats.length} / 3 slots usados</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(230px,1fr))", gap: 15 }}>
-            {savedChats.map((chat) => (
-              <div key={chat.id} onClick={() => loadChat(chat.id)} style={{ background: "rgba(255,255,255,.02)", border: `1px solid rgba(${chat.ac},.12)`, borderRadius: 16, padding: "20px", display: "flex", flexDirecton: "column", gap: 12, cursor: "pointer", transition: "all .2s", position: "relative" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 24 }}>{chat.area.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>{chat.mentorName}</div>
-                    <div style={{ fontSize: 11, color: `rgb(${chat.ac})`, fontFamily: "monospace" }}>{chat.area.label}</div>
-                  </div>
-                  <button onClick={(e) => deleteChat(chat.id, e)} style={{ background: "none", border: "none", color: "rgba(255,80,80,.4)", cursor: "pointer", fontSize: 14, padding: 5 }}>✕</button>
-                </div>
-                <p style={{ fontSize: 12, color: "rgba(255,255,255,.4)", lineHeight: 1.5, margin: "5px 0 0", fontStyle: "italic", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>"{chat.goalText}"</p>
-              </div>
-            ))}
-            {savedChats.length < 3 && (
-              <button onClick={createNewChat} style={{ background: "transparent", border: "2px dashed rgba(255,255,255,.07)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, color: "rgba(255,255,255,.2)", cursor: "pointer", minHeight: 140 }}>
-                <span style={{ fontSize: 26 }}>⊕</span>
-                <span style={{ fontSize: 12, fontWeight: 600, fontFamily: "monospace" }}>Nueva Ruta</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── PANTALLA: BIENVENIDA / CREAR ──
-  if (screen === "welcome") return (
-    <div style={{ minHeight: "100vh", background: "#04090b", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <style>{CSS}</style>
-      <header style={{ width: "100%", padding: "15px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 10 }}>
-        <button onClick={() => setScreen("mainmenu")} style={{ background: "none", border: "none", color: "rgba(255,255,255,.3)", cursor: "pointer", fontSize: 16 }}>←</button>
-        <span style={{ fontSize: 20, color: "#00dc78" }}>⬡</span>
-        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: "#00dc78", letterSpacing: 1 }}>TechPath</span>
-      </header>
-      <div style={{ width: "100%", maxWidth: 660, padding: "34px 18px 60px", display: "flex", flexDirection: "column", gap: 26 }}>
-        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 38 }} className="tp-float">🎯</div>
-          <h1 style={{ fontSize: "clamp(20px,5vw,30px)", fontWeight: 800, fontFamily: "monospace", color: "#fff", margin: 0 }}>Crear nueva ruta</h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", margin: "0 auto", lineHeight: 1.65, maxWidth: 440 }}>Describe tu objetivo técnico. Te asignaré un mentor con hoja de ruta completa.</p>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          <textarea rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "13px 15px", color: "#e8f4ec", fontSize: 14, outline: "none", resize: "none" }} value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} placeholder="Ej: Quiero ser pentester y aprender hacking ético..." />
-          <button onClick={() => startArea({ key: "custom", icon: "🎯", label: "Personalizado", color: "0,220,120" }, customGoal.trim())} disabled={!customGoal.trim()} style={{ padding: "13px", borderRadius: 12, border: "none", background: customGoal.trim() ? "linear-gradient(135deg,#00dc78,#00aa55)" : "rgba(255,255,255,0.05)", color: customGoal.trim() ? "#030a06" : "rgba(255,255,255,.2)", cursor: "pointer", fontWeight: 700, fontFamily: "monospace" }}>Crear mi ruta →</button>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} /><span style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", fontFamily: "monospace" }}>O ELIGE UN ÁREA</span><div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} /></div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 9 }}>
-          {AREAS.map((a) => (
-            <button key={a.key} onClick={() => startArea(a)} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 12px", borderRadius: 13, border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)", cursor: "pointer", color: "inherit" }}>
-              <span style={{ fontSize: 24 }}>{a.icon}</span>
-              <div><div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>{a.label}</div><div style={{ fontSize: 10, color: `rgba(${a.color},.7)`, marginTop: 3, fontFamily: "monospace" }}>Crear →</div></div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── PANTALLA: CHAT ──
-return (
-    <div style={{ height: "100vh", background: "#030a06", fontFamily: "'Outfit',sans-serif", color: "#c8dfd4", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-      <style>{CSS}</style>
-
-      {sideOpen && <div onClick={() => setSideOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.62)", zIndex: 40, backdropFilter: "blur(3px)" }} />}
-
-      <aside style={{ position: "fixed", top: 0, left: 0, bottom: 0, width: 230, background: "#040e07", borderRight: `1px solid rgba(${ac},.13)`, display: "flex", flexDirection: "column", zIndex: 50, transition: "transform .27s cubic-bezier(.4,0,.2,1)", transform: sideOpen ? "translateX(0)" : "translateX(-100%)", overflowY: "auto" }}>
-        
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "15px 14px 13px", borderBottom: `1px solid rgba(${ac},.08)` }}>
-          <span style={{ fontSize: 18, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
-          <span style={{ flex: 1, fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1 }}>{mentorName}</span>
-          <button onClick={() => setSideOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.22)", fontSize: 15, cursor: "pointer" }}>✕</button>
-        </div>
-
-        <div style={{ padding: "12px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
-          <button onClick={() => setScreen("mainmenu")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,.05)", background: "rgba(255,255,255,.03)", color: "rgba(255,255,255,.7)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-            <span>🧭</span> Menú Principal
-          </button>
-        </div>
-
-        {/* 🚀 INTEGRACIÓN PASO 4: ESTRUCTURA DINÁMICA DE ETAPAS */}
-        <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
-          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>PROYECTO ACTIVO</div>
-          
-          {/* Mapeo dinámico de etapas definidas por la IA */}
-          {stages.map((stage) => (
-            <div key={stage.id} style={{ marginBottom: 12 }}>
-              <div 
-                onClick={() => stage.status !== 'locked' && setActiveStageId(stage.id)}
-                style={{ 
-                  display: "flex", alignItems: "center", gap: 8, padding: "8px", borderRadius: 8,
-                  background: activeStageId === stage.id ? `rgba(${ac},.1)` : "transparent",
-                  cursor: stage.status === 'locked' ? "default" : "pointer",
-                  border: `1px solid ${activeStageId === stage.id ? `rgba(${ac},.3)` : "transparent"}`,
-                  transition: "all .2s"
-                }}
-              >
-                <span style={{ fontSize: 12 }}>{stage.status === 'locked' ? "🔒" : "🟢"}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: stage.status === 'locked' ? "rgba(255,255,255,.3)" : "#fff" }}>
-                  {stage.name}
-                </span>
-              </div>
-
-              {/* SUB-DIVISIÓN: Tandas (Solo si la etapa está activa) */}
-              {activeStageId === stage.id && stage.tandas?.map((tanda, j) => (
-                <div key={j} style={{ paddingLeft: 25, marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: `rgb(${ac})` }} />
-                  <span style={{ fontSize: 11, color: "rgba(255,255,255,.4)" }}>{tanda.name}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        <div style={{ padding: "13px 14px", borderBottom: `1px solid rgba(${ac},.07)` }}>
-          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 9 }}>PROGRESO</div>
-          {[["Paths completados", "0", `rgb(${ac})`], ["En curso", "0", "#ffa502"], ["Certificaciones", "0 🏆", "#7ee8fa"]].map(([l, v, c]) => (
-            <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>{l}</span>
-              <span style={{ fontSize: 12, fontFamily: "monospace", fontWeight: 700, color: c }}>{v}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ padding: "13px 14px" }}>
-          <div style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,.15)", letterSpacing: 2, fontWeight: 700, marginBottom: 7 }}>TU OBJETIVO PRINCIPAL</div>
-          <p style={{ 
-            fontSize: 11, 
-            color: mentorName === "TechPathAI" ? "rgba(255,80,80,.4)" : "rgba(255,255,255,.28)", 
-            lineHeight: 1.55, 
-            margin: 0, 
-            fontStyle: "italic",
-            textTransform: mentorName === "TechPathAI" ? "uppercase" : "none"
-          }}>
-            {mentorName === "TechPathAI" ? "⚠ Indefinido" : goalText}
-          </p>
-        </div>
-      </aside>
-
-      <header style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderBottom: `1px solid rgba(${ac},.1)`, background: "rgba(3,10,6,.97)", flexShrink: 0, zIndex: 10 }}>
-        <button onClick={() => setSideOpen(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", padding: "5px", display: "flex", flexDirection: "column", gap: 4 }}>
-          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})` }} />
-          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})` }} />
-          <span style={{ display: "block", width: 17, height: 2, background: `rgb(${ac})` }} />
-        </button>
-        <span style={{ fontSize: 16, color: `rgb(${ac})` }}>{area?.icon || "⬡"}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "monospace", color: `rgb(${ac})`, letterSpacing: 1, flex: 1 }}>{mentorName}</span>
-        {stages.length > 0 && (
-          <span style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: `rgb(${ac})`, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, padding: "3px 9px", borderRadius: 20 }}>
-            ETAPA {activeStageId + 1}
-          </span>
-        )}
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: loading ? "#ffa502" : `rgb(${ac})` }} />
-      </header>
-
-      <div style={{ flex: 1, overflow: "auto", padding: "16px 14px", display: "flex", flexDirection: "column", gap: 13 }}>
-        {loading && messages.length === 0 && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, opacity: .7, marginTop: "20%" }}>
-            <div style={{ fontSize: 32, color: `rgb(${ac})`, animation: "tp-pulse 1.5s infinite" }}>⬡</div>
-            <div style={{ fontSize: 13, fontFamily: "monospace", color: `rgb(${ac})` }}>Preparando tu mentor...</div>
-          </div>
-        )}
-        {messages.map((m, i) => (
-          <div key={i} className="tp-msg" style={{ display: "flex", gap: 8, justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
-            {m.role === "assistant" && <div style={{ width: 27, height: 27, borderRadius: 7, background: `rgba(${ac},.08)`, border: `1px solid rgba(${ac},.22)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: `rgb(${ac})`, flexShrink: 0 }}>{area?.icon || "⬡"}</div>}
-            <div style={m.role === "user" ? { maxWidth: "76%", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.09)", borderRadius: "12px 3px 12px 12px", padding: "10px 13px", fontSize: 13, color: "rgba(255,255,255,.78)" } : { maxWidth: "88%", background: "rgba(4,18,9,.97)", border: `1px solid rgba(${ac},.1)`, borderRadius: "3px 12px 12px 12px", padding: "12px 14px" }}>
-              {m.role === "user" ? m.content : <MD text={m.content} ac={ac} />}
-            </div>
-          </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-
-      {error && <div style={{ padding: "9px 15px", background: "rgba(255,80,80,.08)", borderTop: "1px solid rgba(255,80,80,.2)", fontSize: 12, color: "#ff8080" }}>⚠️ {error}</div>}
-
-      <div style={{ padding: "11px 14px 13px", borderTop: `1px solid rgba(${ac},.08)`, background: "rgba(3,10,6,.98)" }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          <textarea ref={inputRef} rows={1} style={{ flex: 1, background: "rgba(4,16,8,.95)", border: `1px solid rgba(${ac},.14)`, borderRadius: 10, padding: "11px 13px", color: "#c8dfd4", outline: "none", resize: "none" }} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder={loading ? "Esperando..." : "Escribe..."} disabled={loading} />
-          <button onClick={send} disabled={loading || !input.trim()} style={{ padding: "11px 15px", borderRadius: 10, border: `1px solid rgba(${ac},.25)`, background: `rgba(${ac},.09)`, color: `rgb(${ac})`, cursor: "pointer", fontWeight: 700 }}>▶</button>
-        </div>
-      </div>
+    const t = setTimeout(() => {
+      onStart(area || { key: 'custom', icon: '🎯', label: 'Custom', color: '0,255,102' }, customGoal);
+    }, 2000);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+      <div style={{ fontSize: '40px', color: 'var(--text-h)', animation: 'pulse 1.5s infinite', marginBottom: '20px' }}>⬡</div>
+      <div style={{ fontFamily: 'var(--mono)', fontSize: '14px', color: 'var(--text-h)' }}>Cyber-intelligence scan in progress...</div>
+      <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '10px' }}>Construyendo tu árbol de habilidades.</div>
     </div>
   );
 }
 
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #04090b; }
-  @keyframes tp-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
-  @keyframes tp-pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
-  .tp-float { animation: tp-float 3s ease-in-out infinite; }
-  ::-webkit-scrollbar { width: 3px; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.07); border-radius: 2px; }
-`;
+// ─── MAIN APP COMPONENT ───────────────────────────────────────────────────────
+export default function App() {
+  const [screen, setScreen] = useState(() => localStorage.getItem("tp_groq_key") ? "landing" : "apikey");
+  
+  const [keyInput, setKeyInput] = useState("");
+  const [keyError, setKeyError] = useState("");
+  const [keyLoading, setKeyLoading] = useState(false);
+  
+  const [savedChats, setSavedChats] = useState([]);
+  const [currentChatId, setCurrentChatId] = useState(null);
+  
+  // Chat States
+  const [area, setArea] = useState(null);
+  const [ac, setAc] = useState("0,255,102"); // Neon Green default
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [mentorName, setMentorName] = useState("SYSTEM");
+  const [goalText, setGoalText] = useState("");
+  const [stages, setStages] = useState([]);
+  const [activeStageId, setActiveStageId] = useState(0);
+
+  // Wizard States
+  const [wizardStep, setWizardStep] = useState(0); 
+  const [customGoal, setCustomGoal] = useState("");
+
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
+  const keyRef = useRef(null);
+
+  useEffect(() => {
+    const chats = localStorage.getItem("tp_saved_chats");
+    if (chats) setSavedChats(JSON.parse(chats));
+  }, []);
+
+  useEffect(() => {
+    if (screen !== "apikey") localStorage.setItem("tp_saved_chats", JSON.stringify(savedChats));
+  }, [savedChats, screen]);
+
+  const scrollBottom = () => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 60);
+
+  // ─── ACTIONS ───
+  const saveKey = async () => {
+    const k = keyInput.trim();
+    if (!k) return;
+    setKeyLoading(true); setKeyError("");
+    try {
+      localStorage.setItem("tp_groq_key", k);
+      await geminiCall([{ role: "user", content: "OK" }], "Responde solo OK");
+      setScreen("landing");
+    } catch (e) {
+      localStorage.removeItem("tp_groq_key");
+      setKeyError("Autorización denegada. Llave inválida.");
+    } finally {
+      setKeyLoading(false);
+    }
+  };
+
+  const loadChat = (chatId) => {
+    const chat = savedChats.find(c => c.id === chatId);
+    if (!chat) return;
+    setCurrentChatId(chat.id); setArea(chat.area); setAc(chat.ac);
+    setMessages(chat.messages); setMentorName(chat.mentorName); setGoalText(chat.goalText);
+    setStages(chat.stages || []); setActiveStageId(chat.activeStageId ?? 0);
+    setScreen("chat"); scrollBottom();
+  };
+
+  const deleteChat = (chatId, e) => {
+    e.stopPropagation();
+    if (window.confirm("¿Purgar este proyecto del sistema?")) {
+      setSavedChats(prev => prev.filter(c => c.id !== chatId));
+      if (currentChatId === chatId) { setScreen("landing"); setCurrentChatId(null); }
+    }
+  };
+
+  const parseAIResponse = (text, currentStages, currentActiveId, currentGoal, currentMentor) => {
+    let cleanText = text;
+    let newStages = [...(currentStages || [])];
+    let newActiveId = currentActiveId || 0;
+    let newGoal = currentGoal; let newMentor = currentMentor;
+
+    if (cleanText.includes("META_VALIDADA:")) {
+      const matchMeta = cleanText.match(/META_VALIDADA:\s*([^.,\n\r]*)/i);
+      if (matchMeta) newGoal = matchMeta[1].trim().replace(/["']/g, "");
+      const matchMentor = cleanText.match(/soy\s+([^,.\n]*[Mm]entor|[^,.\n]*[Cc]oach|[^,.\n]*IA)/i);
+      if (matchMentor) newMentor = matchMentor[1].trim(); else newMentor = "Mentor AI";
+      cleanText = cleanText.replace(/META_VALIDADA:[^\n\r]*\n?/, "");
+    }
+    if (cleanText.includes("ESTRUCTURA_PROYECTO:")) {
+      const match = cleanText.match(/ESTRUCTURA_PROYECTO:\s*(\[[^\]]*\])/);
+      if (match) {
+        try {
+          const names = JSON.parse(match[1]);
+          newStages = names.map((name, i) => ({ id: i, name, status: i === 0 ? "current" : "locked", tandas: [] }));
+          newActiveId = 0; cleanText = cleanText.replace(match[0], "");
+        } catch (e) {}
+      }
+    }
+    if (newStages.length === 0 && newGoal !== currentGoal) {
+      newStages = [{ id: 0, name: "Etapa 1 — Iniciando", status: "current", tandas: [] }];
+    }
+    if (cleanText.includes("NUEVA_TANDA:")) {
+      const matches = [...cleanText.matchAll(/NUEVA_TANDA:\s*\[([^\]]*)\]/g)];
+      matches.forEach(match => {
+        if (newStages[newActiveId]) {
+          if (!newStages[newActiveId].tandas) newStages[newActiveId].tandas = [];
+          newStages[newActiveId].tandas.push({ name: match[1] });
+        }
+        cleanText = cleanText.replace(match[0], "");
+      });
+    }
+    let stageChanged = false;
+    if (cleanText.includes("DESBLOQUEAR_ETAPA:")) {
+      const nextId = newActiveId + 1;
+      // Mark current stage as completed
+      if (newStages[newActiveId]) newStages[newActiveId].status = "completed";
+      // Create stage dynamically if it doesn't exist
+      if (!newStages[nextId]) {
+        const unlockMatch = cleanText.match(/DESBLOQUEAR_ETAPA:\s*\[?([^\]\n]*)\]?/);
+        const stageName = unlockMatch ? unlockMatch[1].trim() : `Etapa ${nextId + 1}`;
+        newStages.push({ id: nextId, name: stageName, status: "current", tandas: [] });
+      } else {
+        newStages[nextId].status = "current";
+      }
+      newActiveId = nextId;
+      stageChanged = true;
+      cleanText = cleanText.replace(/DESBLOQUEAR_ETAPA:[^\n]*/, "");
+    }
+    return { cleanText: cleanText.trim(), newStages, newActiveId, newGoal, newMentor, stageChanged };
+  };
+
+  const startArea = async (selectedArea, customText = "") => {
+    // ── SLOT LIMIT GUARD ──
+    if (savedChats.length >= 3) {
+      setError("⚠ Capacidad máxima alcanzada (3/3 slots). Elimina un proyecto antes de crear uno nuevo.");
+      setScreen("landing");
+      return;
+    }
+
+    const goal = customText || selectedArea.goal;
+    const newChatId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const newChatObject = { 
+      id: newChatId, area: selectedArea, ac: selectedArea.color, 
+      goalText: goal, mentorName: "SYSTEM", stages: [], 
+      activeStageId: 0, messages: [], createdAt: new Date().toISOString() 
+    };
+
+    setError(""); setLoading(true); setArea(selectedArea); setAc(selectedArea.color);
+    setGoalText(goal); setMessages([]); setStages([]); setActiveStageId(0);
+    setMentorName("SYSTEM"); setCurrentChatId(newChatId); setScreen("chat"); setWizardStep(0);
+
+    try {
+      const res = await geminiCall([{ role: "user", content: goal }], getSystemPrompt(goal));
+      const { cleanText, newStages, newActiveId, newGoal, newMentor } = parseAIResponse(res, [], 0, goal, "SYSTEM");
+
+      setMentorName(newMentor); setGoalText(newGoal); setStages(newStages); setActiveStageId(newActiveId);
+      const initialMessages = [{ role: "assistant", content: cleanText, stageId: newActiveId }];
+      setMessages(initialMessages);
+      // Functional update with dupe guard
+      setSavedChats(prev => {
+        if (prev.length >= 3) return prev;
+        if (prev.some(c => c.id === newChatId)) return prev;
+        return [{ ...newChatObject, mentorName: newMentor, goalText: newGoal, messages: initialMessages, stages: newStages, activeStageId: newActiveId }, ...prev];
+      });
+    } catch (e) {
+      setError(e.message);
+      setMessages([{ role: "assistant", content: `[ERROR DE SISTEMA]: ${e.message}` }]);
+    } finally {
+      setLoading(false); scrollBottom();
+    }
+  };
+
+  const selectStage = async (newStageId) => {
+    setActiveStageId(newStageId);
+    const stageHasMessages = messages.some(m => m.stageId === newStageId);
+    if (!stageHasMessages && newStageId > 0) {
+      setLoading(true);
+      const hiddenPrompt = `[SISTEMA]: El usuario entra a la Etapa ${newStageId + 1}. Saluda, resume y lanza NUEVA_TANDA.`;
+      const tempMessages = [...messages, { role: "user", content: hiddenPrompt, stageId: newStageId, isHidden: true }];
+      setMessages(tempMessages); scrollBottom();
+      try {
+        const res = await geminiCall(tempMessages.map(m => ({role: m.role, content: m.content})), getSystemPrompt(goalText));
+        const { cleanText, newStages, newActiveId } = parseAIResponse(res, stages, newStageId, goalText, mentorName);
+        const updatedMessages = [...tempMessages, { role: "assistant", content: cleanText, stageId: newActiveId }];
+        setMessages(updatedMessages); setStages(newStages); setActiveStageId(newActiveId);
+        setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: updatedMessages, stages: newStages, activeStageId: newActiveId } : c));
+      } catch (e) { setError(e.message); } 
+      finally { setLoading(false); scrollBottom(); }
+    }
+  };
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    let userContent = text; let isBypass = false;
+
+    if (text.toLowerCase().includes("sudo override step")) {
+      isBypass = true;
+      userContent = `[SISTEMA - DEVELOPER BYPASS]: Ejecuta DESBLOQUEAR_ETAPA inmediatamente y despídete.`;
+    }
+
+    setInput(""); setError("");
+    const next = [...messages, { role: "user", content: isBypass ? "> Sudo command executed." : text, stageId: activeStageId }];
+    const apiMessages = [...messages, { role: "user", content: userContent, stageId: activeStageId }];
+    setMessages(next); setLoading(true); scrollBottom();
+
+    try {
+      const res = await geminiCall(apiMessages.map(m => ({role: m.role, content: m.content})), getSystemPrompt(goalText));
+      const { cleanText, newStages, newActiveId, newGoal, newMentor, stageChanged } = parseAIResponse(res, stages, activeStageId, goalText, mentorName);
+      let updatedMessages;
+      if (stageChanged) {
+        // Farewell message stays in the OLD stage, new stage starts clean
+        updatedMessages = [...next, { role: "assistant", content: cleanText, stageId: activeStageId }];
+      } else {
+        updatedMessages = [...next, { role: "assistant", content: cleanText, stageId: newActiveId }];
+      }
+      setMessages(updatedMessages); setMentorName(newMentor); setGoalText(newGoal); setStages(newStages); setActiveStageId(newActiveId);
+      setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: updatedMessages, mentorName: newMentor, goalText: newGoal, stages: newStages, activeStageId: newActiveId } : c));
+    } catch (e) { setError(e.message); }
+    finally { setLoading(false); scrollBottom(); setTimeout(() => inputRef.current?.focus(), 100); }
+  };
+
+  // ─── CYBER-PREMIUM STYLE TOKENS ───
+  const C = {
+    bg:      '#04080F',
+    panel:   '#090e16',
+    elevated:'#0e141c',
+    card:    '#141a23',
+    cyan:    '#00F2FE',
+    green:   '#4EEE94',
+    border:  'rgba(0,242,254,0.12)',
+    borderHi:'rgba(0,242,254,0.25)',
+    glass:   'rgba(0,242,254,0.06)',
+    text:    'rgba(255,255,255,0.9)',
+    muted:   'rgba(255,255,255,0.45)',
+    mid:     'rgba(255,255,255,0.7)',
+  };
+  const dynCyan = `rgba(${ac}, 1)`;
+  // Use ac for accent (it is already an rgb string like "0,242,254")
+  const sContainer = { display:'flex', flexDirection:'column', minHeight:'100vh', backgroundColor: C.bg, color: C.text };
+  const sGlass = { backgroundColor: C.glass, backdropFilter:'blur(12px)', border:`1px solid ${C.border}` };
+  const sInput = { width:'100%', background:'rgba(0,0,0,0.6)', border:`1px solid ${C.border}`, color:'#fff', padding:'12px 16px', borderRadius:'2px', fontFamily:'var(--mono)', outline:'none', fontSize:'13px' };
+  const sBtnNeon = { background:`linear-gradient(135deg, rgba(${ac},0.9), rgba(${ac},0.6))`, color:'#000', border:'none', padding:'12px 24px', fontFamily:'var(--heading)', fontSize:'14px', fontWeight:700, cursor:'pointer', textTransform:'uppercase', letterSpacing:'1px', boxShadow:`0 0 20px rgba(${ac},0.35)` };
+  const sBtnGhost = { background:'transparent', color:`rgb(${ac})`, border:`1px solid rgba(${ac},0.4)`, padding:'10px 20px', fontFamily:'var(--mono)', fontSize:'13px', cursor:'pointer', textTransform:'uppercase', letterSpacing:'0.5px', transition:'all 0.2s' };
+
+  // 1. API KEY
+  if (screen === "apikey") return (
+    <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
+      <div style={{ ...sGlass, padding: "40px", maxWidth: "450px", width: "100%" }}>
+        <h2 style={{ fontFamily: "var(--heading)", color: "var(--accent)", margin: "0 0 10px", textTransform: "uppercase" }}>[Auth_Required]</h2>
+        <p style={{ fontFamily: "var(--mono)", fontSize: "12px", marginBottom: "20px", color: "rgba(255,255,255,0.6)" }}>Introduce tu Groq API key para desencriptar el protocolo.</p>
+        <input ref={keyRef} type="password" style={{ ...sInput, marginBottom: "20px" }} value={keyInput} onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }} placeholder="gsk_..." onKeyDown={(e) => e.key === "Enter" && saveKey()} disabled={keyLoading} />
+        {keyError && <p style={{ color: "red", fontFamily: "var(--mono)", fontSize: "12px", marginBottom: "20px" }}>{keyError}</p>}
+        <button onClick={saveKey} disabled={!keyInput.trim() || keyLoading} style={{ ...sBtnGhost, width: "100%", borderColor: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)", color: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)" }}>
+          {keyLoading ? "Validating..." : "Execute"}
+        </button>
+      </div>
+    </div>
+  );
+
+  // 2. LANDING PAGE
+  if (screen === "landing") return (
+    <div style={{ ...sContainer }}>
+      <header style={{ padding: "24px 40px", display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border)", background: "rgba(0,0,0,0.5)" }}>
+        <div style={{ fontFamily: "var(--heading)", fontSize: "20px", color: "var(--accent)", fontWeight: "bold", letterSpacing: "2px" }}>TechPath <span style={{color: "var(--text-h)"}}>//</span></div>
+      </header>
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "80px 20px" }}>
+        
+        {/* HERO */}
+        <div style={{ maxWidth: "800px", textAlign: "left", marginBottom: "80px" }}>
+          <h1 style={{ fontFamily: "var(--heading)", fontSize: "clamp(40px, 6vw, 64px)", color: "#fff", lineHeight: "1.1", marginBottom: "24px", textTransform: "uppercase" }}>
+            Hackea tu <br/><span style={{ color: "var(--text-h)", textShadow: "0 0 20px rgba(0,255,102,0.3)" }}>Crecimiento Profesional</span> con IA
+          </h1>
+          <p style={{ fontFamily: "var(--sans)", fontSize: "18px", color: "rgba(255,255,255,0.7)", marginBottom: "40px", maxWidth: "600px" }}>
+            Deja de adivinar qué estudiar. El sistema analiza tus habilidades, define tu ruta estratégica y te conecta con un mentor simulado para dominar el sector IT.
+          </p>
+          <div style={{ display: "flex", gap: "20px" }}>
+            <button onClick={() => savedChats.length < 3 && setScreen('wizard')} disabled={savedChats.length >= 3} style={{...sBtnNeon, opacity: savedChats.length >= 3 ? 0.3 : 1, cursor: savedChats.length >= 3 ? 'not-allowed' : 'pointer'}}>{savedChats.length >= 3 ? 'Slots Llenos (3/3)' : 'Generar mi Ruta (Gratis)'}</button>
+          </div>
+          
+          <div style={{ marginTop: "40px", fontFamily: "var(--mono)", fontSize: "12px", color: "var(--accent)" }}>
+            <span style={{opacity: 0.5}}>SUPPORTED STACKS:</span> 
+            <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>PYTHON</span>
+            <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>AWS</span>
+            <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>REACT</span>
+            <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>LINUX</span>
+            <span style={{ marginLeft: "10px", color: "#fff", border: "1px solid var(--border)", padding: "4px 8px" }}>KALI</span>
+          </div>
+        </div>
+
+        {/* ACTIVE PATHS */}
+        {savedChats.length > 0 && (
+          <div style={{ width: "100%", maxWidth: "800px", borderTop: "1px solid var(--border)", paddingTop: "40px" }}>
+            <h2 style={{ fontFamily: "var(--heading)", fontSize: "14px", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "20px", display: "flex", justifyContent: "space-between" }}>
+              <span>Proyectos Activos</span>
+              <span>{savedChats.length}/3 Slots</span>
+            </h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
+              {savedChats.map((chat) => (
+                <div key={chat.id} onClick={() => loadChat(chat.id)} style={{ ...sGlass, padding:'18px', cursor:'pointer', borderLeft:`2px solid rgb(${chat.ac})`, transition:'all 0.2s' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'8px' }}>
+                    <div style={{ fontFamily:'var(--heading)', fontSize:'14px', fontWeight:700, color:`rgb(${chat.ac})`, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1, marginRight:'8px' }}>
+                      {chat.goalText ? `${chat.area?.icon || '◈'} ${chat.goalText.slice(0, 40)}${chat.goalText.length > 40 ? '…' : ''}` : `Misión: ${chat.area?.label || 'Custom'}`}
+                    </div>
+                    <button onClick={(e) => deleteChat(chat.id, e)} style={{ background:'none', border:'none', color:'rgba(255,80,80,0.7)', cursor:'pointer', fontFamily:'var(--mono)', fontSize:'11px', flexShrink:0 }}>[X]</button>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:'6px', marginBottom:'6px' }}>
+                    <span style={{ fontFamily:'var(--mono)', fontSize:'10px', color:'rgba(255,255,255,0.4)', background: C.card, padding:'2px 6px', borderRadius:'2px', letterSpacing:'0.5px' }}>{chat.area?.label?.toUpperCase()}</span>
+                    <span style={{ fontFamily:'var(--mono)', fontSize:'10px', color: C.muted }}>·</span>
+                    <span style={{ fontFamily:'var(--mono)', fontSize:'10px', color: C.muted }}>{chat.mentorName !== 'SYSTEM' ? chat.mentorName : 'Initializing…'}</span>
+                  </div>
+                  <p style={{ fontFamily:'var(--sans)', fontSize:'12px', color:'rgba(255,255,255,0.5)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.4 }}>{chat.goalText || '—'}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+
+  // 3. ONBOARDING WIZARD (Terminal Style)
+  if (screen === "wizard") return (
+    <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
+      <div style={{ ...sGlass, maxWidth: "600px", width: "100%", padding: "0" }}>
+        {/* Terminal Header */}
+        <div style={{ background: "#000", padding: "10px 20px", borderBottom: "1px solid var(--border)", display: "flex", gap: "10px" }}>
+          <div style={{ width: "12px", height: "12px", background: "rgba(255,0,0,0.5)", borderRadius: "50%" }}></div>
+          <div style={{ width: "12px", height: "12px", background: "rgba(255,255,0,0.5)", borderRadius: "50%" }}></div>
+          <div style={{ width: "12px", height: "12px", background: "var(--text-h)", borderRadius: "50%" }}></div>
+        </div>
+        
+        {/* Terminal Body */}
+        <div style={{ padding: "30px", minHeight: "350px", display: "flex", flexDirection: "column" }}>
+          {wizardStep === 0 && (
+            <>
+              <div style={{ fontFamily: "var(--mono)", fontSize: "14px", color: "var(--accent)" }}>root@techpath:~$ ./init_protocol --select-objective</div>
+              <p style={{ fontFamily: "var(--sans)", fontSize: "15px", color: "rgba(255,255,255,0.8)", margin: "20px 0" }}>Selecciona tu dominio de especialización:</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                {AREAS.map((a) => (
+                  <button key={a.key} onClick={() => { setCustomGoal(a.goal); setArea(a); setAc(a.color); setWizardStep(1); }} style={{ ...sBtnGhost, textAlign: "left", fontSize: "14px", padding: "12px", borderColor: "var(--border)", color: "#fff" }}>
+                    <span style={{ color: `rgb(${a.color})`, marginRight: "8px" }}>{a.icon}</span> {a.label}
+                  </button>
+                ))}
+            </div>
+            <p style={{fontFamily: "var(--mono)", color: "rgba(255,255,255,0.4)", fontSize: "12px", marginTop: "20px"}}>-- O personaliza tu entrada --</p>
+            <input type="text" style={{...sInput, marginTop: "10px"}} placeholder="Ej: Quiero ser pentester..." value={customGoal} onChange={(e) => setCustomGoal(e.target.value)} onKeyDown={(e)=> e.key==="Enter" && setWizardStep(1)} />
+            {customGoal && <button onClick={() => setWizardStep(1)} style={{...sBtnGhost, marginTop: "10px", width: "100%", borderColor: "var(--text-h)", color: "var(--text-h)"}}>Siguiente -{'>'}</button>}
+            </>
+          )}
+
+          {wizardStep === 1 && <WizardLoader area={area} customGoal={customGoal} onStart={startArea} />}
+        </div>
+      </div>
+    </div>
+  );
+
+  // 4. CHAT DASHBOARD — 3-PANEL DESKTOP
+  const activeStage = stages.find(s => s.id === activeStageId);
+  const completedCount = stages.filter(s => s.status === 'completed').length;
+  return (
+    <div style={{ height:'100vh', display:'flex', backgroundColor: C.bg, color: C.text, overflow:'hidden', fontFamily:'var(--sans)' }}>
+
+      {/* ── LEFT SIDEBAR: SKILL TREE ── */}
+      <aside style={{ width:'260px', flexShrink:0, borderRight:`1px solid ${C.border}`, background: C.panel, display:'flex', flexDirection:'column', position:'relative' }}>
+        {/* Logo */}
+        <div style={{ padding:'20px 20px 16px', borderBottom:`1px solid ${C.border}` }}>
+          <div style={{ fontFamily:'var(--heading)', fontSize:'17px', fontWeight:700, color: C.cyan, letterSpacing:'1.5px' }}>
+            TechPath <span style={{ color: C.green }}>//</span>
+          </div>
+          <div style={{ fontFamily:'var(--mono)', fontSize:'10px', color: C.muted, marginTop:'4px', letterSpacing:'1px' }}>
+            SYS_{mentorName}
+          </div>
+        </div>
+
+        {/* Stages */}
+        <div style={{ flex:1, overflowY:'auto', padding:'12px 10px' }}>
+          <div style={{ fontFamily:'var(--mono)', fontSize:'9px', color: C.muted, letterSpacing:'2px', padding:'4px 8px 10px', textTransform:'uppercase' }}>
+            Skill_Tree_Nodes
+          </div>
+          {stages.length === 0 && (
+            <div style={{ fontFamily:'var(--mono)', fontSize:'11px', color: C.muted, padding:'8px', textAlign:'center', opacity:0.5 }}>
+              — awaiting mission brief —
+            </div>
+          )}
+          {stages.map((stage) => {
+            const isActive = activeStageId === stage.id;
+            const isDone = stage.status === 'completed';
+            const isLocked = stage.status === 'locked';
+            const stageColor = isDone ? C.muted : isActive ? `rgb(${ac})` : C.mid;
+            const badge = isDone ? '✓' : isActive ? '▶' : '⌁';
+            return (
+              <div key={stage.id}
+                onClick={() => !isLocked && selectStage(stage.id)}
+                style={{
+                  marginBottom:'4px', padding:'10px 10px', borderRadius:'3px',
+                  border: isActive ? `1px solid rgba(${ac},0.35)` : '1px solid transparent',
+                  background: isActive ? `rgba(${ac},0.05)` : 'transparent',
+                  boxShadow: isActive ? `inset 2px 0 0 rgb(${ac})` : isDone ? `inset 2px 0 0 ${C.muted}` : 'none',
+                  cursor: isLocked ? 'default' : 'pointer', color: stageColor, transition:'all 0.15s',
+                }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                  <span style={{ fontFamily:'var(--mono)', fontSize:'11px', opacity:0.8 }}>{badge}</span>
+                  <span style={{ fontFamily:'var(--mono)', fontSize:'10px', opacity:0.6, letterSpacing:'0.5px' }}>
+                    {isDone ? '[DONE]' : isActive ? '[ACTIVE]' : isLocked ? '[LOCKED]' : '[READY]'}
+                  </span>
+                </div>
+                <div style={{ fontFamily:'var(--sans)', fontSize:'12px', fontWeight:500, marginTop:'3px', lineHeight:1.3 }}>{stage.name}</div>
+                {isActive && stage.tandas?.map((t, idx) => (
+                  <div key={idx} style={{ fontFamily:'var(--mono)', fontSize:'10px', color: C.muted, marginTop:'5px', paddingLeft:'8px', borderLeft:`1px solid rgba(${ac},0.4)` }}>
+                    {'>'} {t.name}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Exit button */}
+        <div style={{ padding:'12px', borderTop:`1px solid ${C.border}` }}>
+          <button onClick={() => setScreen('landing')} style={{ ...sBtnGhost, width:'100%', fontSize:'11px', padding:'8px', textAlign:'center' }}>
+            {'< EXIT_SYSTEM'}
+          </button>
+        </div>
+      </aside>
+
+      {/* ── CENTER: CHAT ── */}
+      <main style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, borderRight:`1px solid ${C.border}` }}>
+        {/* Header */}
+        <header style={{ padding:'14px 24px', borderBottom:`1px solid ${C.border}`, background: C.panel, display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'12px', minWidth:0 }}>
+            <span style={{ fontFamily:'var(--mono)', fontSize:'10px', color: C.muted, flexShrink:0, letterSpacing:'1px' }}>TARGET:</span>
+            <span style={{ fontFamily:'var(--sans)', fontSize:'13px', color:'#fff', fontWeight:500, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{goalText || '—'}</span>
+          </div>
+          {loading && (
+            <div style={{ display:'flex', alignItems:'center', gap:'6px', flexShrink:0 }}>
+              <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:`rgb(${ac})`, animation:'pulse 0.8s infinite' }} />
+              <span style={{ fontFamily:'var(--mono)', fontSize:'10px', color:`rgb(${ac})`, letterSpacing:'1px', animation:'pulse 1s infinite' }}>PROCESSING...</span>
+            </div>
+          )}
+        </header>
+
+        {/* Messages */}
+        <div style={{ flex:1, padding:'24px', overflowY:'auto', display:'flex', flexDirection:'column', gap:'18px' }}>
+          {loading && messages.length === 0 && (
+            <div style={{ margin:'auto', textAlign:'center' }}>
+              <div style={{ fontSize:'28px', color:`rgb(${ac})`, animation:'pulse 1.2s infinite', marginBottom:'10px' }}>⬡</div>
+              <div style={{ fontFamily:'var(--mono)', fontSize:'12px', color:`rgb(${ac})`, letterSpacing:'1px' }}>Establishing secure connection...</div>
+            </div>
+          )}
+          {messages.filter(m => m.stageId === activeStageId && !m.isHidden).map((m, i) => (
+            <div key={i} style={{ display:'flex', flexDirection:'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', animation:'fadeInUp 0.25s ease' }}>
+              <div style={{ fontFamily:'var(--mono)', fontSize:'9px', color: C.muted, marginBottom:'5px', letterSpacing:'0.5px' }}>
+                {m.role === 'user' ? 'user@host' : `sys@${mentorName}`}
+              </div>
+              {m.role === 'user' ? (
+                <div style={{
+                  maxWidth:'70%', background: C.glass, border:`1px solid rgba(${ac},0.2)`,
+                  borderRadius:'3px 3px 0 3px', padding:'12px 16px',
+                  backdropFilter:'blur(8px)', boxShadow:`0 4px 20px rgba(0,0,0,0.4)`,
+                }}>
+                  <div style={{ fontFamily:'var(--sans)', fontSize:'14px', lineHeight:1.6, color: C.text }}>{m.content}</div>
+                </div>
+              ) : (
+                <div style={{ maxWidth:'85%', padding:'2px 0' }}>
+                  <MD text={m.content} ac={ac} />
+                </div>
+              )}
+            </div>
+          ))}
+          {error && (
+            <div style={{ fontFamily:'var(--mono)', fontSize:'12px', color:'#ff716c', padding:'10px', border:'1px solid rgba(255,113,108,0.3)', background:'rgba(255,113,108,0.06)', borderRadius:'2px' }}>
+              ⚠ {error}
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Terminal Input */}
+        <div style={{ padding:'0', background: C.bg, borderTop:`1px solid ${C.border}`, flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', padding:'14px 20px', gap:'10px' }}>
+            <span style={{ fontFamily:'var(--mono)', fontSize:'14px', color:`rgb(${ac})`, flexShrink:0, animation: loading ? 'blink 1s infinite' : 'none' }}>{'>'}</span>
+            <input
+              ref={inputRef}
+              style={{ flex:1, background:'transparent', border:'none', color:'#fff', fontFamily:'var(--mono)', fontSize:'13px', outline:'none', letterSpacing:'0.3px' }}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && send()}
+              placeholder={activeStage?.status === 'completed' ? '[ NODE_LOCKED ] — select next stage' : 'Enter command...'}
+              disabled={loading || activeStage?.status === 'completed'}
+            />
+            {input.trim() && (
+              <button onClick={send} disabled={loading} style={{ ...sBtnNeon, padding:'6px 14px', fontSize:'11px', flexShrink:0 }}>
+                SEND
+              </button>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* ── RIGHT INTEL PANEL ── */}
+      <aside style={{ width:'280px', flexShrink:0, background: C.panel, display:'flex', flexDirection:'column', overflowY:'auto' }}>
+        {/* Header */}
+        <div style={{ padding:'20px 16px 14px', borderBottom:`1px solid ${C.border}` }}>
+          <div style={{ fontFamily:'var(--mono)', fontSize:'9px', color: C.cyan, letterSpacing:'3px', textTransform:'uppercase' }}>◈ Intel Panel</div>
+        </div>
+
+        <div style={{ flex:1, padding:'14px', display:'flex', flexDirection:'column', gap:'16px' }}>
+          {/* Validated Goal */}
+          <div>
+            <div style={{ fontFamily:'var(--mono)', fontSize:'9px', color: C.muted, letterSpacing:'2px', marginBottom:'8px', textTransform:'uppercase' }}>Objetivo Validado</div>
+            <div style={{ fontFamily:'var(--sans)', fontSize:'12px', color: goalText ? '#fff' : C.muted, lineHeight:1.5, padding:'10px', background: C.elevated, borderRadius:'2px', borderLeft:`2px solid ${C.cyan}` }}>
+              {goalText || '— awaiting validation —'}
+            </div>
+          </div>
+
+          {/* Operator Profile */}
+          <div>
+            <div style={{ fontFamily:'var(--mono)', fontSize:'9px', color: C.muted, letterSpacing:'2px', marginBottom:'8px', textTransform:'uppercase' }}>Perfil del Operador</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+              {[
+                { label:'AREA', value: area?.label || '—' },
+                { label:'STACK', value: area?.icon ? `${area.icon} ${area.key?.toUpperCase()}` : '—' },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'7px 10px', background: C.card, borderRadius:'2px' }}>
+                  <span style={{ fontFamily:'var(--mono)', fontSize:'9px', color: C.muted, letterSpacing:'1px' }}>{label}</span>
+                  <span style={{ fontFamily:'var(--mono)', fontSize:'11px', color:`rgb(${ac})`, fontWeight:500 }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Progress */}
+          {stages.length > 0 && (
+            <div>
+              <div style={{ fontFamily:'var(--mono)', fontSize:'9px', color: C.muted, letterSpacing:'2px', marginBottom:'8px', textTransform:'uppercase', display:'flex', justifyContent:'space-between' }}>
+                <span>Progreso</span>
+                <span style={{ color:`rgb(${ac})` }}>{completedCount}/{stages.length}</span>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:'5px' }}>
+                {stages.map(s => {
+                  const isDone = s.status === 'completed';
+                  const isAct = s.id === activeStageId;
+                  return (
+                    <div key={s.id} style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                      <div style={{ width:'8px', height:'8px', borderRadius:'1px', flexShrink:0, background: isDone ? C.green : isAct ? `rgb(${ac})` : C.elevated, boxShadow: isAct ? `0 0 8px rgb(${ac})` : 'none', animation: isAct ? 'glow-pulse 2s infinite' : 'none' }} />
+                      <div style={{ fontFamily:'var(--mono)', fontSize:'10px', color: isDone ? C.mid : isAct ? '#fff' : C.muted, lineHeight:1.3, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+
+    </div>
+  );
+}
