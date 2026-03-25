@@ -352,7 +352,7 @@ export default function App() {
   }, [currentChatId]);
 
   // ── FUNCIÓN: Iniciar nueva ruta ──
-  onst startArea = useCallback(async (selectedArea, customText = "") => {
+  const startArea = useCallback(async (selectedArea, customText = "") => {
     const goal = customText || selectedArea.goal;
     const newChatId = Date.now().toString();
     
