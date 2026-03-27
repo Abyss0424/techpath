@@ -1,75 +1,79 @@
-### State Variables (keyInput, keyLoading, keyError)
 ```javascript
-  const [keyInput, setKeyInput] = useState("");
-  const [keyError, setKeyError] = useState("");
-  const [keyLoading, setKeyLoading] = useState(false);
-```
+async function geminiCall(history, systemPrompt, onChunk) {
+  const rawKey = localStorage.getItem("tp_groq_key");
+  if (!rawKey) throw new Error("No se encontró la API key. Reiniciar Conexión.");
+  let API_KEY;
+  try { API_KEY = decryptKey(rawKey); if (!API_KEY) throw new Error(); }
+  catch { throw new Error("Protocolo de llave corrupto. Reconfigura tu acceso."); }
 
-### saveKey function
-```javascript
-  const saveKey = async () => {
-    const k = keyInput.trim();
-    if (!k) return;
-    setKeyLoading(true); setKeyError("");
-    try {
-      localStorage.setItem("tp_groq_key", CryptoJS.AES.encrypt(k, SECRET_KEY).toString());
-      await geminiCall([{ role: "user", content: "OK" }], "Responde solo OK");
-      setScreen("landing");
-    } catch {
-      localStorage.removeItem("tp_groq_key");
-      setKeyError("Autorización denegada. Llave inválida.");
-    } finally {
-      setKeyLoading(false);
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...history.map((m) => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: m.content,
+    })),
+  ];
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      messages,
+      max_tokens: 4096,
+      temperature: 0.6,
+      top_p: 0.9,
+      stream: true
+    }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    let msg = data?.error?.message || `Error HTTP ${res.status}`;
+    if (msg.includes("Rate limit reached") && msg.includes("tokens per day")) {
+      const timeMatch = msg.match(/try again in ([\w\d.]+)/i);
+      const waitTime = timeMatch ? timeMatch[1] : "un momento";
+      const humanTime = waitTime.replace('h', ' horas').replace('m', ' min').replace('s', ' seg');
+      msg = `Límite diario excedido. El servidor requiere enfriamiento de subsistemas. Auto-reinicio en ${humanTime}.`;
     }
-  };
-```
+    throw new Error(msg);
+  }
 
-### screen === "apikey" render block
-```javascript
-    if (screen === "apikey") return (
-      <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
-        <div style={{ ...sGlass, padding: isMobile ? '24px 16px' : '40px', maxWidth: '450px', width: isMobile ? '90%' : '100%', position: 'relative' }}>
-          <button
-            onClick={() => { setScreen("splash"); setKeyInput(""); setKeyError(""); }}
-            style={{
-              position: 'absolute',
-              top: '10px',
-              right: '10px',
-              background: 'transparent',
-              border: 'none',
-              color: 'rgba(255,255,255,0.4)',
-              fontFamily: 'var(--mono)',
-              fontSize: '18px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              zIndex: 10
-            }}
-            onMouseOver={(e) => { e.target.style.color = '#ff4444'; e.target.style.textShadow = '0 0 10px #ff4444'; }}
-            onMouseOut={(e) => { e.target.style.color = 'rgba(255,255,255,0.4)'; e.target.style.textShadow = 'none'; }}
-            aria-label="Cerrar configuración"
-          >
-            X
-          </button>
-          <h2 style={{ fontFamily: "var(--heading)", color: "var(--accent)", margin: "0 0 20px", textTransform: "uppercase" }}>[Auth_Required]</h2>
-          <ol style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'rgba(255,255,255,0.6)', paddingLeft: '20px', lineHeight: '1.8', margin: '0 0 24px 0' }}>
-            <li>
-              Entra a la Consola de Groq Keys.
-              <div style={{ marginTop: '5px', opacity: 0.8 }}>
-                Obtén tu key aquí: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--cyan)', textDecoration: 'none', textShadow: '0 0 8px var(--cyan)', fontWeight: 600 }}>groq.com/keys</a>
-              </div>
-            </li>
-            <li>Genera o copia tu clave API.</li>
-            <li>Pégala en el campo de abajo.</li>
-          </ol>
-          <input ref={keyRef} type="password" style={{ ...sInput, marginBottom: "8px", fontSize: '16px' }} value={keyInput} onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }} placeholder="gsk_..." onKeyDown={(e) => e.key === "Enter" && saveKey()} disabled={keyLoading} aria-label="Entrada de API Key" />
-          <p style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: '#ff4444', marginBottom: '20px', opacity: 0.8 }}>
-            ⚠ Tu clave se almacena localmente en tu navegador. No uses esta app en computadoras compartidas.
-          </p>
-          {keyError && <p style={{ color: "red", fontFamily: "var(--mono)", fontSize: "12px", marginBottom: "20px" }}>{keyError}</p>}
-          <button onClick={saveKey} disabled={!keyInput.trim() || keyLoading} style={{ ...sBtnGhost, width: "100%", borderColor: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)", color: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)" }} aria-label="Guardar y Ejecutar">
-            {keyLoading ? "Validating..." : "Execute"}
-          </button>
-        </div>
-      </div>
-    );
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let fullText = "";
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop(); // Keep partial line in buffer
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("data: ")) continue;
+      const dataStr = trimmed.slice(6);
+      if (dataStr === "[DONE]") break;
+      try {
+        const json = JSON.parse(dataStr);
+        const content = json.choices[0]?.delta?.content || "";
+        if (content) {
+          fullText += content;
+          if (onChunk) onChunk(fullText);
+        }
+      } catch (e) {
+        console.error("SSE Parse Error:", e);
+      }
+    }
+  }
+
+  if (!fullText) throw new Error("Fallo en flujo de datos. Sin respuesta.");
+  return fullText;
+}
 ```

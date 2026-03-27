@@ -1714,7 +1714,11 @@ export default function App() {
     if (!k) return;
     setKeyLoading(true); setKeyError("");
     try {
-      await geminiCall([{ role: "user", content: "OK" }], "Responde solo OK");
+      const res = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: { "Authorization": `Bearer ${k}` }
+      });
+      if (!res.ok) throw new Error("Invalid key");
+      localStorage.setItem("tp_groq_key", CryptoJS.AES.encrypt(k, SECRET_KEY).toString());
       setScreen("landing");
       setShowKeyModal(false);
     } catch {
