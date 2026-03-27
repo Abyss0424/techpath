@@ -7,11 +7,11 @@ import { Analytics } from "@vercel/analytics/react";
 
 // Derivación de clave del navegador para cifrado local (No es seguridad real, solo ofuscación local)
 const getFingerprint = () => {
-    if (typeof window === 'undefined') return "fallback_key";
-    const nav = window.navigator;
-    const screen = window.screen;
-    const data = `${nav.userAgent}|${nav.language}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
-    return CryptoJS.SHA256(data).toString();
+  if (typeof window === 'undefined') return "fallback_key";
+  const nav = window.navigator;
+  const screen = window.screen;
+  const data = `${nav.userAgent}|${nav.language}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+  return CryptoJS.SHA256(data).toString();
 };
 const SECRET_KEY = getFingerprint();
 
@@ -642,7 +642,7 @@ const WizardLoader = React.memo(function WizardLoader({ area, customGoal, onStar
 });
 
 // ─── MAIN APP COMPONENT ───────────────────────────────────────────────────────
-const LandingScreen = React.memo(({ screen, setScreen, isMobile, savedChats, loadChat, deleteChat, AREAS }) => {
+const LandingScreen = React.memo(({ screen, setScreen, isMobile, savedChats, loadChat, deleteChat, AREAS, setShowKeyModal }) => {
   const terminalId = useMemo(() => Math.random().toString(16).slice(2, 10).toUpperCase(), []);
   return (
     <div style={{ display: 'flex', flex: 1, flexDirection: 'column', width: '100%', minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', position: 'relative' }}>
@@ -652,13 +652,25 @@ const LandingScreen = React.memo(({ screen, setScreen, isMobile, savedChats, loa
           TECHPATH
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          {savedChats.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div className="dot-pulse"></div>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--green)' }}>PROTOCOL_ACTIVE</span>
-            </div>
-          )}
-          <button onClick={() => setScreen('apikey')} className="btn-ghost" style={{ padding: '8px 16px', fontSize: '11px' }} aria-label="Open Key Configuration">KEY_AUTH</button>
+          <div
+            onClick={() => setShowKeyModal(true)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              cursor: 'pointer', padding: '4px 8px',
+              border: '1px solid rgba(0,242,254,0.15)',
+              borderRadius: '2px',
+            }}
+          >
+            <span style={{
+              fontFamily: 'var(--font-mono)', fontSize: '10px',
+              color: 'rgba(0,242,254,0.6)', letterSpacing: '1.5px'
+            }}>KEY_AUTH:</span>
+            <span style={{
+              fontFamily: 'var(--font-mono)', fontSize: '10px',
+              color: '#4EEE94', letterSpacing: '1px',
+              textShadow: '0 0 8px #4EEE94'
+            }}>ACTIVE</span>
+          </div>
         </div>
       </header>
 
@@ -1125,432 +1137,433 @@ REGLAS:
   };
 
   return (
-  <div style={{
-    margin: '16px 0 0',
-    borderRadius: '4px',
-    overflow: 'hidden',
-    border: '1px solid rgba(0,242,254,0.25)',
-    background: 'rgba(0,242,254,0.04)',
-    boxShadow: '0 0 20px rgba(0,242,254,0.06)',
-  }}>
-    {/* Header / Toggle */}
-    <button
-      onClick={() => { setIsOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 200); }}
-      style={{
-        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 14px', background: 'rgba(0,242,254,0.06)', border: 'none',
-        borderBottom: isOpen ? '1px solid rgba(0,242,254,0.15)' : 'none',
-        cursor: 'pointer',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <div style={{
-          width: '7px', height: '7px', borderRadius: '50%',
-          background: loading ? '#4EEE94' : '#00F2FE',
-          boxShadow: loading ? '0 0 8px #4EEE94' : '0 0 8px #00F2FE',
-          animation: loading ? 'dot-pulse 1s ease-in-out infinite' : 'none'
-        }}/>
+    <div style={{
+      margin: '16px 0 0',
+      borderRadius: '4px',
+      overflow: 'hidden',
+      border: '1px solid rgba(0,242,254,0.25)',
+      background: 'rgba(0,242,254,0.04)',
+      boxShadow: '0 0 20px rgba(0,242,254,0.06)',
+    }}>
+      {/* Header / Toggle */}
+      <button
+        onClick={() => { setIsOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 200); }}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px', background: 'rgba(0,242,254,0.06)', border: 'none',
+          borderBottom: isOpen ? '1px solid rgba(0,242,254,0.15)' : 'none',
+          cursor: 'pointer',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            width: '7px', height: '7px', borderRadius: '50%',
+            background: loading ? '#4EEE94' : '#00F2FE',
+            boxShadow: loading ? '0 0 8px #4EEE94' : '0 0 8px #00F2FE',
+            animation: loading ? 'dot-pulse 1s ease-in-out infinite' : 'none'
+          }} />
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700,
+            color: '#00F2FE', letterSpacing: '2px', textTransform: 'uppercase'
+          }}>
+            [ Chat de Ayuda ]
+          </span>
+        </div>
         <span style={{
-          fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700,
-          color: '#00F2FE', letterSpacing: '2px', textTransform: 'uppercase'
-        }}>
-          [ Chat de Ayuda ]
-        </span>
-      </div>
-      <span style={{
-        fontFamily: 'var(--font-mono)', fontSize: '12px',
-        color: '#00F2FE', transition: 'transform 0.2s',
-        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block'
-      }}>▾</span>
-    </button>
+          fontFamily: 'var(--font-mono)', fontSize: '12px',
+          color: '#00F2FE', transition: 'transform 0.2s',
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block'
+        }}>▾</span>
+      </button>
 
-    {isOpen && (
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {/* Messages */}
-        <div style={{
-          height: '340px', overflowY: 'auto', padding: '10px 12px',
-          display: 'flex', flexDirection: 'column', gap: '8px',
-          scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,242,254,0.15) transparent'
-        }}>
-          {msgs.length === 0 && (
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', height: '100%', gap: '8px'
-            }}>
+      {isOpen && (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Messages */}
+          <div style={{
+            height: '340px', overflowY: 'auto', padding: '10px 12px',
+            display: 'flex', flexDirection: 'column', gap: '8px',
+            scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,242,254,0.15) transparent'
+          }}>
+            {msgs.length === 0 && (
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', height: '100%', gap: '8px'
+              }}>
+                <div style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '11px',
+                  color: 'rgba(0,242,254,0.6)', textAlign: 'center', lineHeight: 1.8
+                }}>
+                  ¿Tienes una duda técnica?<br />
+                  <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px' }}>
+                    Pregunta sobre conceptos, comandos,<br />errores o código de tu curso.
+                  </span>
+                </div>
+                <div style={{
+                  marginTop: '8px', padding: '6px 10px',
+                  border: '1px solid rgba(0,242,254,0.12)', borderRadius: '3px',
+                  background: 'rgba(0,242,254,0.03)',
+                }}>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '9px',
+                    color: 'rgba(255,255,255,0.25)', letterSpacing: '1px'
+                  }}>
+                    Escribe <span style={{ color: '#00F2FE' }}>limpiar</span> para resetear el chat
+                  </span>
+                </div>
+              </div>
+            )}
+            {msgs.map((m, i) => (
+              <div key={i} style={{
+                padding: '8px 10px', borderRadius: '3px', fontSize: '12px',
+                fontFamily: m.role === 'user' ? 'var(--font-mono)' : 'Inter, sans-serif',
+                lineHeight: 1.6,
+                background: m.role === 'user' ? 'rgba(0,242,254,0.06)' : 'rgba(78,238,148,0.05)',
+                borderLeft: `2px solid ${m.role === 'user' ? '#00F2FE' : '#4EEE94'}`,
+                color: m.role === 'user' ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.75)',
+                whiteSpace: 'pre-wrap', wordBreak: 'break-word'
+              }}>
+                {m.content}
+              </div>
+            ))}
+            {loading && (
               <div style={{
                 fontFamily: 'var(--font-mono)', fontSize: '11px',
-                color: 'rgba(0,242,254,0.6)', textAlign: 'center', lineHeight: 1.8
-              }}>
-                ¿Tienes una duda técnica?<br/>
-                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px' }}>
-                  Pregunta sobre conceptos, comandos,<br/>errores o código de tu curso.
-                </span>
-              </div>
-              <div style={{
-                marginTop: '8px', padding: '6px 10px',
-                border: '1px solid rgba(0,242,254,0.12)', borderRadius: '3px',
-                background: 'rgba(0,242,254,0.03)',
-              }}>
-                <span style={{
-                  fontFamily: 'var(--font-mono)', fontSize: '9px',
-                  color: 'rgba(255,255,255,0.25)', letterSpacing: '1px'
-                }}>
-                  Escribe <span style={{ color: '#00F2FE' }}>limpiar</span> para resetear el chat
-                </span>
-              </div>
-            </div>
-          )}
-          {msgs.map((m, i) => (
-            <div key={i} style={{
-              padding: '8px 10px', borderRadius: '3px', fontSize: '12px',
-              fontFamily: m.role === 'user' ? 'var(--font-mono)' : 'Inter, sans-serif',
-              lineHeight: 1.6,
-              background: m.role === 'user' ? 'rgba(0,242,254,0.06)' : 'rgba(78,238,148,0.05)',
-              borderLeft: `2px solid ${m.role === 'user' ? '#00F2FE' : '#4EEE94'}`,
-              color: m.role === 'user' ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.75)',
-              whiteSpace: 'pre-wrap', wordBreak: 'break-word'
-            }}>
-              {m.content}
-            </div>
-          ))}
-          {loading && (
-            <div style={{
-              fontFamily: 'var(--font-mono)', fontSize: '11px',
-              color: '#4EEE94', padding: '6px 10px',
-              borderLeft: '2px solid rgba(78,238,148,0.4)',
-              background: 'rgba(78,238,148,0.03)',
-            }}>{'> procesando_'}</div>
-          )}
-          <div ref={bottomRef}/>
-        </div>
+                color: '#4EEE94', padding: '6px 10px',
+                borderLeft: '2px solid rgba(78,238,148,0.4)',
+                background: 'rgba(78,238,148,0.03)',
+              }}>{'> procesando_'}</div>
+            )}
+            <div ref={bottomRef} />
+          </div>
 
-        {/* Input */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          padding: '8px 12px',
-          borderTop: '1px solid rgba(0,242,254,0.12)',
-          background: 'rgba(0,0,0,0.3)'
-        }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#00F2FE' }}>›</span>
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+          {/* Input */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '8px 12px',
+            borderTop: '1px solid rgba(0,242,254,0.12)',
+            background: 'rgba(0,0,0,0.3)'
+          }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#00F2FE' }}>›</span>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  if (input.trim().toLowerCase() === 'limpiar') { setMsgs([]); setInput(''); }
+                  else send();
+                }
+              }}
+              placeholder="Escribe tu duda..."
+              style={{
+                flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                fontFamily: 'var(--font-mono)', fontSize: '11px',
+                color: 'rgba(255,255,255,0.8)',
+              }}
+            />
+            <button
+              onClick={() => {
                 if (input.trim().toLowerCase() === 'limpiar') { setMsgs([]); setInput(''); }
                 else send();
-              }
-            }}
-            placeholder="Escribe tu duda..."
-            style={{
-              flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              fontFamily: 'var(--font-mono)', fontSize: '11px',
-              color: 'rgba(255,255,255,0.8)',
-            }}
-          />
-          <button
-            onClick={() => {
-              if (input.trim().toLowerCase() === 'limpiar') { setMsgs([]); setInput(''); }
-              else send();
-            }}
-            disabled={loading || !input.trim()}
-            style={{
-              background: input.trim() && !loading ? 'rgba(0,242,254,0.1)' : 'transparent',
-              border: '1px solid rgba(0,242,254,0.3)',
-              borderRadius: '2px', padding: '4px 10px',
-              fontFamily: 'var(--font-mono)', fontSize: '10px',
-              color: '#00F2FE', cursor: 'pointer',
-              opacity: loading || !input.trim() ? 0.3 : 1,
-              transition: 'all 0.2s'
-            }}
-          >
-            OK
-          </button>
+              }}
+              disabled={loading || !input.trim()}
+              style={{
+                background: input.trim() && !loading ? 'rgba(0,242,254,0.1)' : 'transparent',
+                border: '1px solid rgba(0,242,254,0.3)',
+                borderRadius: '2px', padding: '4px 10px',
+                fontFamily: 'var(--font-mono)', fontSize: '10px',
+                color: '#00F2FE', cursor: 'pointer',
+                opacity: loading || !input.trim() ? 0.3 : 1,
+                transition: 'all 0.2s'
+              }}
+            >
+              OK
+            </button>
+          </div>
         </div>
-      </div>
-    )}
-  </div>
-);};
+      )}
+    </div>
+  );
+};
 
 const DashboardScreen = React.memo(({ isMobile, isMenuOpen, setIsMenuOpen, isRightOpen, setIsRightOpen, sidebarContent, messages, input, setInput, loading, error, mentorName, ac, send, chatEndRef, stages, activeStageId, operatorProfile, C, MD, activeStage, completedCount, isDashboardLoading, inputRef, geminiCall }) => {
   return (
-  <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden', background:'var(--bg)', position:'relative' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg)', position: 'relative' }}>
 
-    {/* ── NAVBAR ── */}
-    <div style={{
-      height:'48px', display:'flex', alignItems:'center', justifyContent:'space-between',
-      padding:'0 12px', borderBottom:'1px solid rgba(0,242,254,0.08)',
-      background:'rgba(4,8,15,0.95)', backdropFilter:'blur(12px)',
-      flexShrink:0, zIndex:100, gap:'8px'
-    }}>
-      {/* Left: Menu toggle */}
-      <button onClick={() => setIsMenuOpen(o => !o)} style={{
-        background: isMenuOpen ? 'rgba(0,242,254,0.1)' : 'transparent',
-        border:'1px solid rgba(0,242,254,0.15)',
-        borderRadius:'2px', padding:'5px 8px', cursor:'pointer',
-        fontFamily:'var(--font-mono)', fontSize:'9px',
-        color: isMenuOpen ? '#00F2FE' : 'rgba(0,242,254,0.7)',
-        letterSpacing:'1px', flexShrink:0
-      }}>[ MENU ]</button>
+      {/* ── NAVBAR ── */}
+      <div style={{
+        height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 12px', borderBottom: '1px solid rgba(0,242,254,0.08)',
+        background: 'rgba(4,8,15,0.95)', backdropFilter: 'blur(12px)',
+        flexShrink: 0, zIndex: 100, gap: '8px'
+      }}>
+        {/* Left: Menu toggle */}
+        <button onClick={() => setIsMenuOpen(o => !o)} style={{
+          background: isMenuOpen ? 'rgba(0,242,254,0.1)' : 'transparent',
+          border: '1px solid rgba(0,242,254,0.15)',
+          borderRadius: '2px', padding: '5px 8px', cursor: 'pointer',
+          fontFamily: 'var(--font-mono)', fontSize: '9px',
+          color: isMenuOpen ? '#00F2FE' : 'rgba(0,242,254,0.7)',
+          letterSpacing: '1px', flexShrink: 0
+        }}>[ MENU ]</button>
 
-      {/* Center: status */}
-      <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', minWidth:0 }}>
-        <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'var(--green)', boxShadow:'0 0 6px var(--green)', flexShrink:0 }}/>
-        <span style={{
-          fontFamily:'var(--font-mono)', fontSize:'10px', color:'rgba(255,255,255,0.6)',
-          letterSpacing:'1px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'
-        }}>
-          LINK_ACTIVE // {mentorName || 'SISTEMA'}
-        </span>
-        <span style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.4)', flexShrink:0 }}>
-          ENCRYPT: LOCAL_ENCRYPTED
-        </span>
+        {/* Center: status */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', minWidth: 0 }}>
+          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 6px var(--green)', flexShrink: 0 }} />
+          <span style={{
+            fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'rgba(255,255,255,0.6)',
+            letterSpacing: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+          }}>
+            LINK_ACTIVE // {mentorName || 'SISTEMA'}
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(0,242,254,0.4)', flexShrink: 0 }}>
+            ENCRYPT: LOCAL_ENCRYPTED
+          </span>
+        </div>
+
+        {/* Right: Intel toggle */}
+        <button onClick={() => setIsRightOpen(o => !o)} style={{
+          background: isRightOpen ? 'rgba(0,242,254,0.1)' : 'transparent',
+          border: '1px solid rgba(0,242,254,0.15)',
+          borderRadius: '2px', padding: '5px 8px', cursor: 'pointer',
+          fontFamily: 'var(--font-mono)', fontSize: '9px',
+          color: isRightOpen ? '#00F2FE' : 'rgba(0,242,254,0.7)',
+          letterSpacing: '1px', flexShrink: 0
+        }}>[ INTEL ]</button>
       </div>
 
-      {/* Right: Intel toggle */}
-      <button onClick={() => setIsRightOpen(o => !o)} style={{
-        background: isRightOpen ? 'rgba(0,242,254,0.1)' : 'transparent',
-        border:'1px solid rgba(0,242,254,0.15)',
-        borderRadius:'2px', padding:'5px 8px', cursor:'pointer',
-        fontFamily:'var(--font-mono)', fontSize:'9px',
-        color: isRightOpen ? '#00F2FE' : 'rgba(0,242,254,0.7)',
-        letterSpacing:'1px', flexShrink:0
-      }}>[ INTEL ]</button>
-    </div>
+      {/* ── BODY ── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
 
-    {/* ── BODY ── */}
-    <div style={{ flex:1, display:'flex', overflow:'hidden', position:'relative' }}>
+        {/* LEFT SIDEBAR — drawer on mobile/tablet, fixed on desktop */}
+        <>
+          {isMenuOpen && (
+            <div onClick={() => setIsMenuOpen(false)} style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+              zIndex: 199, display: 'block'
+            }} />
+          )}
+          <div style={{
+            width: '200px', flexShrink: 0,
+            background: 'var(--bg-panel)',
+            borderRight: '1px solid rgba(0,242,254,0.07)',
+            overflowY: 'auto', overflowX: 'hidden',
+            position: window.innerWidth >= 1024 ? 'relative' : 'fixed',
+            top: window.innerWidth >= 1024 ? 'auto' : '48px',
+            left: window.innerWidth >= 1024 ? 'auto' : 0,
+            height: window.innerWidth >= 1024 ? 'auto' : 'calc(100vh - 48px)',
+            zIndex: window.innerWidth >= 1024 ? 1 : 200,
+            transform: window.innerWidth >= 1024 ? 'none' : (isMenuOpen ? 'translateX(0)' : 'translateX(-100%)'),
+            transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+            flexDirection: 'column'
+          }}>
+            {sidebarContent}
+          </div>
+        </>
 
-      {/* LEFT SIDEBAR — drawer on mobile/tablet, fixed on desktop */}
-      <>
-        {isMenuOpen && (
-          <div onClick={() => setIsMenuOpen(false)} style={{
-            position:'fixed', inset:0, background:'rgba(0,0,0,0.6)',
-            zIndex:199, display:'block'
-          }}/>
-        )}
+        {/* CENTER CHAT */}
         <div style={{
-          width:'200px', flexShrink:0,
-          background:'var(--bg-panel)',
-          borderRight:'1px solid rgba(0,242,254,0.07)',
-          overflowY:'auto', overflowX:'hidden',
-          position: window.innerWidth >= 1024 ? 'relative' : 'fixed',
-          top: window.innerWidth >= 1024 ? 'auto' : '48px',
-          left: window.innerWidth >= 1024 ? 'auto' : 0,
-          height: window.innerWidth >= 1024 ? 'auto' : 'calc(100vh - 48px)',
-          zIndex: window.innerWidth >= 1024 ? 1 : 200,
-          transform: window.innerWidth >= 1024 ? 'none' : (isMenuOpen ? 'translateX(0)' : 'translateX(-100%)'),
-          transition:'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
-          flexDirection:'column'
+          flex: 1, display: 'flex', flexDirection: 'column',
+          minWidth: 0, overflow: 'hidden',
+          background: 'var(--bg)'
         }}>
-          {sidebarContent}
-        </div>
-      </>
-
-      {/* CENTER CHAT */}
-      <div style={{
-        flex:1, display:'flex', flexDirection:'column',
-        minWidth:0, overflow:'hidden',
-        background:'var(--bg)'
-      }}>
-        {/* Messages area */}
-        <div style={{
-          flex:1, overflowY:'auto', padding:'16px',
-          display:'flex', flexDirection:'column', gap:'12px',
-          scrollbarWidth:'thin', scrollbarColor:'rgba(0,242,254,0.1) transparent'
-        }}>
-          {isDashboardLoading ? (
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%' }}>
-              <span style={{ fontFamily:'var(--font-mono)', fontSize:'12px', color:'rgba(0,242,254,0.5)' }}>
-                INICIALIZANDO SISTEMA...
-              </span>
-            </div>
-          ) : (
-            messages.filter(m => !m.isHidden).map((m, i) => (
-              <div key={i} style={{
-                display:'flex', flexDirection:'column',
-                alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
-                gap:'4px'
-              }}>
-                {m.role === 'assistant' && (
-                  <span style={{
-                    fontFamily:'var(--font-mono)', fontSize:'9px',
-                    color:'rgba(0,242,254,0.4)', letterSpacing:'1px',
-                    paddingLeft:'12px'
-                  }}>
-                    SYS_{(mentorName||'MENTOR').toUpperCase().replace(/\s/g,'_')} // {new Date(m.timestamp || Date.now()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
-                  </span>
-                )}
-                <div style={{
-                  maxWidth:'85%',
-                  padding:'10px 14px',
-                  borderRadius: m.role === 'user' ? '6px 2px 6px 6px' : '2px 6px 6px 6px',
-                  background: m.role === 'user' ? 'rgba(0,242,254,0.06)' : 'rgba(255,255,255,0.03)',
-                  borderLeft: m.role === 'assistant' ? `2px solid rgba(${ac||'0,242,254'},0.5)` : 'none',
-                  borderRight: m.role === 'user' ? '2px solid rgba(78,238,148,0.5)' : 'none',
-                  fontSize:'13px', lineHeight:1.65,
-                  color: m.role === 'user' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.75)',
-                  wordBreak:'break-word'
+          {/* Messages area */}
+          <div style={{
+            flex: 1, overflowY: 'auto', padding: '16px',
+            display: 'flex', flexDirection: 'column', gap: '12px',
+            scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,242,254,0.1) transparent'
+          }}>
+            {isDashboardLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'rgba(0,242,254,0.5)' }}>
+                  INICIALIZANDO SISTEMA...
+                </span>
+              </div>
+            ) : (
+              messages.filter(m => !m.isHidden).map((m, i) => (
+                <div key={i} style={{
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                  gap: '4px'
                 }}>
-                  {m.role === 'user' ? (
-                    <div style={{ fontFamily:'var(--font-mono)', whiteSpace:'pre-wrap' }}>{m.content}</div>
-                  ) : (
-                    <MD text={m.content} />
+                  {m.role === 'assistant' && (
+                    <span style={{
+                      fontFamily: 'var(--font-mono)', fontSize: '9px',
+                      color: 'rgba(0,242,254,0.4)', letterSpacing: '1px',
+                      paddingLeft: '12px'
+                    }}>
+                      SYS_{(mentorName || 'MENTOR').toUpperCase().replace(/\s/g, '_')} // {new Date(m.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                  <div style={{
+                    maxWidth: '85%',
+                    padding: '10px 14px',
+                    borderRadius: m.role === 'user' ? '6px 2px 6px 6px' : '2px 6px 6px 6px',
+                    background: m.role === 'user' ? 'rgba(0,242,254,0.06)' : 'rgba(255,255,255,0.03)',
+                    borderLeft: m.role === 'assistant' ? `2px solid rgba(${ac || '0,242,254'},0.5)` : 'none',
+                    borderRight: m.role === 'user' ? '2px solid rgba(78,238,148,0.5)' : 'none',
+                    fontSize: '13px', lineHeight: 1.65,
+                    color: m.role === 'user' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.75)',
+                    wordBreak: 'break-word'
+                  }}>
+                    {m.role === 'user' ? (
+                      <div style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                    ) : (
+                      <MD text={m.content} />
+                    )}
+                  </div>
+                  {m.role === 'user' && (
+                    <span style={{
+                      fontFamily: 'var(--font-mono)', fontSize: '9px',
+                      color: 'rgba(78,238,148,0.4)', letterSpacing: '1px',
+                      paddingRight: '12px'
+                    }}>OPERATOR</span>
                   )}
                 </div>
-                {m.role === 'user' && (
-                  <span style={{
-                    fontFamily:'var(--font-mono)', fontSize:'9px',
-                    color:'rgba(78,238,148,0.4)', letterSpacing:'1px',
-                    paddingRight:'12px'
-                  }}>OPERATOR</span>
-                )}
+              ))
+            )}
+            {loading && messages.length > 0 && !messages.some(m => m.isStreaming) && (
+              <div style={{
+                padding: '10px 14px', borderLeft: `2px solid rgba(${ac || '0,242,254'},0.3)`,
+                background: 'rgba(255,255,255,0.02)', borderRadius: '2px 6px 6px 6px',
+                maxWidth: '85%'
+              }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'rgba(0,242,254,0.5)' }}>
+                  {'> procesando_'}
+                </span>
               </div>
-            ))
-          )}
-          {loading && messages.length > 0 && !messages.some(m => m.isStreaming) && (
-            <div style={{
-              padding:'10px 14px', borderLeft:`2px solid rgba(${ac||'0,242,254'},0.3)`,
-              background:'rgba(255,255,255,0.02)', borderRadius:'2px 6px 6px 6px',
-              maxWidth:'85%'
-            }}>
-              <span style={{ fontFamily:'var(--font-mono)', fontSize:'12px', color:'rgba(0,242,254,0.5)' }}>
-                {'> procesando_'}
-              </span>
-            </div>
-          )}
-          {error && (
-            <div style={{
-              padding:'10px 14px', borderLeft:'2px solid rgba(255,59,59,0.5)',
-              background:'rgba(255,59,59,0.04)', borderRadius:'2px',
-              fontFamily:'var(--font-mono)', fontSize:'11px', color:'rgba(255,59,59,0.7)'
-            }}>{error}</div>
-          )}
-          <div ref={chatEndRef}/>
+            )}
+            {error && (
+              <div style={{
+                padding: '10px 14px', borderLeft: '2px solid rgba(255,59,59,0.5)',
+                background: 'rgba(255,59,59,0.04)', borderRadius: '2px',
+                fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'rgba(255,59,59,0.7)'
+              }}>{error}</div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Input area */}
+          <div style={{
+            borderTop: '1px solid rgba(0,242,254,0.09)',
+            padding: '10px 16px',
+            background: 'rgba(4,8,15,0.8)',
+            display: 'flex', alignItems: 'flex-end', gap: '10px'
+          }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'rgba(0,242,254,0.5)', paddingBottom: '10px', flexShrink: 0 }}>›</span>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => {
+                setInput(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              placeholder="Ingresar comando de respuesta..."
+              rows={1}
+              disabled={loading}
+              aria-label="Message Input"
+              style={{
+                flex: 1, background: 'transparent', border: 'none', outline: 'none', resize: 'none',
+                fontFamily: 'var(--font-mono)', fontSize: '13px',
+                color: 'rgba(255,255,255,0.8)', lineHeight: 1.5,
+                minHeight: '20px', maxHeight: '120px', overflowY: 'auto',
+                padding: '8px 0'
+              }}
+            />
+            <button
+              onClick={send}
+              disabled={loading || !input.trim()}
+              aria-label="Send Message"
+              style={{
+                background: input.trim() && !loading ? 'linear-gradient(135deg,#3DEBA0,#00D4E8)' : 'rgba(0,242,254,0.08)',
+                border: 'none', borderRadius: '3px', padding: '10px 20px',
+                fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700,
+                color: input.trim() && !loading ? '#030810' : 'rgba(255,255,255,0.2)',
+                cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s', flexShrink: 0, letterSpacing: '1px'
+              }}
+            >
+              SEND
+            </button>
+          </div>
         </div>
 
-        {/* Input area */}
-        <div style={{
-          borderTop:'1px solid rgba(0,242,254,0.09)',
-          padding:'10px 16px',
-          background:'rgba(4,8,15,0.8)',
-          display:'flex', alignItems:'flex-end', gap:'10px'
-        }}>
-          <span style={{ fontFamily:'var(--font-mono)', fontSize:'14px', color:'rgba(0,242,254,0.5)', paddingBottom:'10px', flexShrink:0 }}>›</span>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={e => {
-              setInput(e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-            placeholder="Ingresar comando de respuesta..."
-            rows={1}
-            disabled={loading}
-            aria-label="Message Input"
-            style={{
-              flex:1, background:'transparent', border:'none', outline:'none', resize:'none',
-              fontFamily:'var(--font-mono)', fontSize:'13px',
-              color:'rgba(255,255,255,0.8)', lineHeight:1.5,
-              minHeight:'20px', maxHeight:'120px', overflowY:'auto',
-              padding:'8px 0'
-            }}
-          />
-          <button
-            onClick={send}
-            disabled={loading || !input.trim()}
-            aria-label="Send Message"
-            style={{
-              background: input.trim() && !loading ? 'linear-gradient(135deg,#3DEBA0,#00D4E8)' : 'rgba(0,242,254,0.08)',
-              border:'none', borderRadius:'3px', padding:'10px 20px',
-              fontFamily:'var(--font-mono)', fontSize:'12px', fontWeight:700,
-              color: input.trim() && !loading ? '#030810' : 'rgba(255,255,255,0.2)',
-              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-              transition:'all 0.2s', flexShrink:0, letterSpacing:'1px'
-            }}
-          >
-            SEND
-          </button>
-        </div>
+        {/* RIGHT PANEL — drawer on mobile/tablet, fixed on desktop */}
+        <>
+          {isRightOpen && window.innerWidth < 1024 && (
+            <div onClick={() => setIsRightOpen(false)} style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 199
+            }} />
+          )}
+          <div style={{
+            width: '260px', flexShrink: 0,
+            background: 'var(--bg-panel)',
+            borderLeft: '1px solid rgba(0,242,254,0.07)',
+            overflowY: 'auto', overflowX: 'hidden',
+            position: window.innerWidth >= 1024 ? 'relative' : 'fixed',
+            top: window.innerWidth >= 1024 ? 'auto' : '48px',
+            right: window.innerWidth >= 1024 ? 'auto' : 0,
+            height: window.innerWidth >= 1024 ? 'auto' : 'calc(100vh - 48px)',
+            zIndex: window.innerWidth >= 1024 ? 1 : 200,
+            transform: window.innerWidth >= 1024 ? 'none' : (isRightOpen ? 'translateX(0)' : 'translateX(100%)'),
+            transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+            padding: '16px'
+          }}>
+            {/* TARGET_GOAL */}
+            <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(0,242,254,0.03)', border: '1px solid rgba(0,242,254,0.1)', borderRadius: '3px' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(0,242,254,0.5)', letterSpacing: '1.5px', marginBottom: '6px' }}>TARGET_GOAL:</div>
+              <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '15px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', marginBottom: '10px' }}>
+                {operatorProfile?.area || 'OBJETIVO'}
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(255,255,255,0.3)', marginBottom: '4px', letterSpacing: '1px' }}>PROGRESS: {stages.length > 0 ? Math.round((stages.filter(s => s.status === 'completed').length / stages.length) * 100) : 0}%</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ height: '3px', flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden', marginRight: '8px' }}>
+                  <div style={{ height: '100%', background: `rgb(${ac || '0,242,254'})`, width: stages.length > 0 ? `${(stages.filter(s => s.status === 'completed').length / stages.length) * 100}%` : '0%', transition: 'width 0.8s ease', borderRadius: '2px' }} />
+                </div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>{stages.filter(s => s.status === 'completed').length}/{stages.length} NODES</span>
+              </div>
+            </div>
+
+            {/* OPERATIONAL_INTEL */}
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(0,242,254,0.4)', letterSpacing: '2px', marginBottom: '10px' }}>[ OPERATIONAL_INTEL ]</div>
+
+            <div style={{ marginBottom: '8px', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '3px' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(0,242,254,0.4)', letterSpacing: '1.5px', marginBottom: '4px' }}>ACTIVE_TASK:</div>
+              <div style={{ fontFamily: 'Inter,sans-serif', fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>{activeStage?.name || 'Iniciando diagnóstico...'}</div>
+            </div>
+
+            <div style={{ marginBottom: '16px', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '3px' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(0,242,254,0.4)', letterSpacing: '1.5px', marginBottom: '4px' }}>CURRENT_STACK:</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>{operatorProfile?.stack || '● READY'}</div>
+            </div>
+
+            {/* Usage guide */}
+            <div style={{ marginBottom: '8px', padding: '10px 12px', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '3px', background: 'rgba(255,255,255,0.02)' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(0,242,254,0.35)', letterSpacing: '1.5px', marginBottom: '6px', textTransform: 'uppercase' }}>Guía de uso</div>
+              <div style={{ fontFamily: 'Inter,sans-serif', fontSize: '11px', color: 'rgba(255,255,255,0.3)', lineHeight: 1.6 }}>
+                Usa el chat de abajo para resolver dudas técnicas sobre tu curso: conceptos, comandos, errores o código. Es independiente de tu mentor.
+              </div>
+            </div>
+
+            <HelperChat geminiCall={geminiCall} />
+
+            {/* ENCRYPT badge */}
+            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(0,242,254,0.3)', letterSpacing: '1px' }}>● ENCRYPT_MODE_ACTIVE</div>
+            </div>
+          </div>
+        </>
+
       </div>
-
-      {/* RIGHT PANEL — drawer on mobile/tablet, fixed on desktop */}
-      <>
-        {isRightOpen && window.innerWidth < 1024 && (
-          <div onClick={() => setIsRightOpen(false)} style={{
-            position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:199
-          }}/>
-        )}
-        <div style={{
-          width:'260px', flexShrink:0,
-          background:'var(--bg-panel)',
-          borderLeft:'1px solid rgba(0,242,254,0.07)',
-          overflowY:'auto', overflowX:'hidden',
-          position: window.innerWidth >= 1024 ? 'relative' : 'fixed',
-          top: window.innerWidth >= 1024 ? 'auto' : '48px',
-          right: window.innerWidth >= 1024 ? 'auto' : 0,
-          height: window.innerWidth >= 1024 ? 'auto' : 'calc(100vh - 48px)',
-          zIndex: window.innerWidth >= 1024 ? 1 : 200,
-          transform: window.innerWidth >= 1024 ? 'none' : (isRightOpen ? 'translateX(0)' : 'translateX(100%)'),
-          transition:'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
-          padding:'16px'
-        }}>
-          {/* TARGET_GOAL */}
-          <div style={{ marginBottom:'16px', padding:'12px', background:'rgba(0,242,254,0.03)', border:'1px solid rgba(0,242,254,0.1)', borderRadius:'3px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.5)', letterSpacing:'1.5px', marginBottom:'6px' }}>TARGET_GOAL:</div>
-            <div style={{ fontFamily:'Space Grotesk, sans-serif', fontSize:'15px', fontWeight:700, color:'rgba(255,255,255,0.9)', marginBottom:'10px' }}>
-              {operatorProfile?.area || 'OBJETIVO'}
-            </div>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(255,255,255,0.3)', marginBottom:'4px', letterSpacing:'1px' }}>PROGRESS: {stages.length > 0 ? Math.round((stages.filter(s=>s.status==='completed').length/stages.length)*100) : 0}%</div>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div style={{ height:'3px', flex:1, background:'rgba(255,255,255,0.06)', borderRadius:'2px', overflow:'hidden', marginRight:'8px' }}>
-                <div style={{ height:'100%', background:`rgb(${ac||'0,242,254'})`, width: stages.length > 0 ? `${(stages.filter(s=>s.status==='completed').length/stages.length)*100}%` : '0%', transition:'width 0.8s ease', borderRadius:'2px' }}/>
-              </div>
-              <span style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(255,255,255,0.3)', flexShrink:0 }}>{stages.filter(s=>s.status==='completed').length}/{stages.length} NODES</span>
-            </div>
-          </div>
-
-          {/* OPERATIONAL_INTEL */}
-          <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.4)', letterSpacing:'2px', marginBottom:'10px' }}>[ OPERATIONAL_INTEL ]</div>
-
-          <div style={{ marginBottom:'8px', padding:'10px 12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:'3px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.4)', letterSpacing:'1.5px', marginBottom:'4px' }}>ACTIVE_TASK:</div>
-            <div style={{ fontFamily:'Inter,sans-serif', fontSize:'12px', color:'rgba(255,255,255,0.7)' }}>{activeStage?.name || 'Iniciando diagnóstico...'}</div>
-          </div>
-
-          <div style={{ marginBottom:'16px', padding:'10px 12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:'3px' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.4)', letterSpacing:'1.5px', marginBottom:'4px' }}>CURRENT_STACK:</div>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:'12px', color:'rgba(255,255,255,0.7)' }}>{operatorProfile?.stack || '● READY'}</div>
-          </div>
-
-          {/* Usage guide */}
-          <div style={{ marginBottom:'8px', padding:'10px 12px', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'3px', background:'rgba(255,255,255,0.02)' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.35)', letterSpacing:'1.5px', marginBottom:'6px', textTransform:'uppercase' }}>Guía de uso</div>
-            <div style={{ fontFamily:'Inter,sans-serif', fontSize:'11px', color:'rgba(255,255,255,0.3)', lineHeight:1.6 }}>
-              Usa el chat de abajo para resolver dudas técnicas sobre tu curso: conceptos, comandos, errores o código. Es independiente de tu mentor.
-            </div>
-          </div>
-
-          <HelperChat geminiCall={geminiCall} />
-
-          {/* ENCRYPT badge */}
-          <div style={{ marginTop:'16px', display:'flex', justifyContent:'flex-end' }}>
-            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.3)', letterSpacing:'1px' }}>● ENCRYPT_MODE_ACTIVE</div>
-          </div>
-        </div>
-      </>
-
     </div>
-  </div>
-);
+  );
 });
 
 
@@ -1592,6 +1605,7 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRightOpen, setIsRightOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showKeyModal, setShowKeyModal] = useState(false);
 
   // Sync refs for stale closure protection
   const stagesRef = useRef(stages);
@@ -1671,6 +1685,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const hasKey = localStorage.getItem("tp_groq_key");
+    if (!hasKey) {
+      setShowKeyModal(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (screen !== "apikey") {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
@@ -1685,7 +1706,7 @@ export default function App() {
     }
   }, [messages.length]);
 
-  const scrollBottom = () => {}; // Replaced by useEffect
+  const scrollBottom = () => { }; // Replaced by useEffect
 
   // ─── ACTIONS ───
   const saveKey = async () => {
@@ -1693,9 +1714,9 @@ export default function App() {
     if (!k) return;
     setKeyLoading(true); setKeyError("");
     try {
-      localStorage.setItem("tp_groq_key", CryptoJS.AES.encrypt(k, SECRET_KEY).toString());
       await geminiCall([{ role: "user", content: "OK" }], "Responde solo OK");
       setScreen("landing");
+      setShowKeyModal(false);
     } catch {
       localStorage.removeItem("tp_groq_key");
       setKeyError("Autorización denegada. Llave inválida.");
@@ -2055,52 +2076,7 @@ export default function App() {
   // ─── SCREEN RENDERER ───────────────────────────────────────────────────────
   const renderContent = () => {
     // 1. API KEY
-    if (screen === "apikey") return (
-      <div style={{ ...sContainer, justifyContent: "center", alignItems: "center" }}>
-        <div style={{ ...sGlass, padding: isMobile ? '24px 16px' : '40px', maxWidth: '450px', width: isMobile ? '90%' : '100%', position: 'relative' }}>
-          <button
-            onClick={() => { setScreen("splash"); setKeyInput(""); setKeyError(""); }}
-            style={{
-              position: 'absolute',
-              top: '10px',
-              right: '10px',
-              background: 'transparent',
-              border: 'none',
-              color: 'rgba(255,255,255,0.4)',
-              fontFamily: 'var(--mono)',
-              fontSize: '18px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              zIndex: 10
-            }}
-            onMouseOver={(e) => { e.target.style.color = '#ff4444'; e.target.style.textShadow = '0 0 10px #ff4444'; }}
-            onMouseOut={(e) => { e.target.style.color = 'rgba(255,255,255,0.4)'; e.target.style.textShadow = 'none'; }}
-            aria-label="Cerrar configuración"
-          >
-            X
-          </button>
-          <h2 style={{ fontFamily: "var(--heading)", color: "var(--accent)", margin: "0 0 20px", textTransform: "uppercase" }}>[Auth_Required]</h2>
-          <ol style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'rgba(255,255,255,0.6)', paddingLeft: '20px', lineHeight: '1.8', margin: '0 0 24px 0' }}>
-            <li>
-              Entra a la Consola de Groq Keys.
-              <div style={{ marginTop: '5px', opacity: 0.8 }}>
-                Obtén tu key aquí: <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--cyan)', textDecoration: 'none', textShadow: '0 0 8px var(--cyan)', fontWeight: 600 }}>groq.com/keys</a>
-              </div>
-            </li>
-            <li>Genera o copia tu clave API.</li>
-            <li>Pégala en el campo de abajo.</li>
-          </ol>
-          <input ref={keyRef} type="password" style={{ ...sInput, marginBottom: "8px", fontSize: '16px' }} value={keyInput} onChange={(e) => { setKeyInput(e.target.value); setKeyError(""); }} placeholder="gsk_..." onKeyDown={(e) => e.key === "Enter" && saveKey()} disabled={keyLoading} aria-label="Entrada de API Key" />
-          <p style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: '#ff4444', marginBottom: '20px', opacity: 0.8 }}>
-            ⚠ Tu clave se almacena localmente en tu navegador. No uses esta app en computadoras compartidas.
-          </p>
-          {keyError && <p style={{ color: "red", fontFamily: "var(--mono)", fontSize: "12px", marginBottom: "20px" }}>{keyError}</p>}
-          <button onClick={saveKey} disabled={!keyInput.trim() || keyLoading} style={{ ...sBtnGhost, width: "100%", borderColor: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)", color: keyInput && !keyLoading ? "var(--text-h)" : "var(--border)" }} aria-label="Guardar y Ejecutar">
-            {keyLoading ? "Validating..." : "Execute"}
-          </button>
-        </div>
-      </div>
-    );
+    // Removed to favor the new explicit overlay modal logic
 
     if (screen === "splash" || screen === "landing") {
       return (
@@ -2112,6 +2088,7 @@ export default function App() {
           loadChat={loadChat}
           deleteChat={deleteChat}
           AREAS={AREAS}
+          setShowKeyModal={setShowKeyModal}
         />
       );
     }
@@ -2182,14 +2159,14 @@ export default function App() {
             const ac = currentChat?.ac || '0,242,254';
             if (areaKey === 'blue_team') return (
               <svg width="70" height="70" viewBox="0 0 70 70">
-                <circle cx="35" cy="35" r="30" fill="none" stroke={`rgba(${ac},0.15)`} strokeWidth="1"/>
-                <circle cx="35" cy="35" r="20" fill="none" stroke={`rgba(${ac},0.1)`} strokeWidth="1"/>
-                <circle cx="35" cy="35" r="10" fill="none" stroke={`rgba(${ac},0.1)`} strokeWidth="1"/>
-                <circle cx="35" cy="35" r="2" fill={`rgb(${ac})`}/>
+                <circle cx="35" cy="35" r="30" fill="none" stroke={`rgba(${ac},0.15)`} strokeWidth="1" />
+                <circle cx="35" cy="35" r="20" fill="none" stroke={`rgba(${ac},0.1)`} strokeWidth="1" />
+                <circle cx="35" cy="35" r="10" fill="none" stroke={`rgba(${ac},0.1)`} strokeWidth="1" />
+                <circle cx="35" cy="35" r="2" fill={`rgb(${ac})`} />
                 <line x1="35" y1="35" x2="35" y2="5" stroke={`rgb(${ac})`} strokeWidth="1.5" opacity="0.8"
-                  style={{transformOrigin:'35px 35px', animation:'radar-sweep 3s linear infinite'}}/>
-                <line x1="35" y1="35" x2="65" y2="35" stroke={`rgba(${ac},0.2)`} strokeWidth="0.5"/>
-                <line x1="35" y1="35" x2="35" y2="65" stroke={`rgba(${ac},0.2)`} strokeWidth="0.5"/>
+                  style={{ transformOrigin: '35px 35px', animation: 'radar-sweep 3s linear infinite' }} />
+                <line x1="35" y1="35" x2="65" y2="35" stroke={`rgba(${ac},0.2)`} strokeWidth="0.5" />
+                <line x1="35" y1="35" x2="35" y2="65" stroke={`rgba(${ac},0.2)`} strokeWidth="0.5" />
               </svg>
             );
             if (areaKey === 'red_team') return (
@@ -2197,37 +2174,37 @@ export default function App() {
                 <polyline points="0,20 10,20 18,5 26,35 34,20 42,20 50,8 58,32 66,20 80,20"
                   fill="none" stroke={`rgb(${ac})`} strokeWidth="1.5"
                   strokeDasharray="200" strokeDashoffset="200"
-                  style={{animation:'heartbeat 2s ease-in-out infinite'}}/>
+                  style={{ animation: 'heartbeat 2s ease-in-out infinite' }} />
               </svg>
             );
             if (areaKey === 'ai_ml') return (
               <svg width="80" height="70" viewBox="0 0 80 70">
-                {[[40,35],[15,15],[65,15],[15,55],[65,55],[40,10],[40,60]].map(([x,y],i) => (
+                {[[40, 35], [15, 15], [65, 15], [15, 55], [65, 55], [40, 10], [40, 60]].map(([x, y], i) => (
                   <circle key={i} cx={x} cy={y} r="4" fill={`rgb(${ac})`} opacity="0.6"
-                    style={{animation:`node-pulse 2s ease-in-out infinite`, animationDelay:`${i*0.3}s`}}/>
+                    style={{ animation: `node-pulse 2s ease-in-out infinite`, animationDelay: `${i * 0.3}s` }} />
                 ))}
-                {[[40,35,15,15],[40,35,65,15],[40,35,15,55],[40,35,65,55],[40,35,40,10],[40,35,40,60]].map(([x1,y1,x2,y2],i) => (
-                  <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`rgba(${ac},0.2)`} strokeWidth="1"/>
+                {[[40, 35, 15, 15], [40, 35, 65, 15], [40, 35, 15, 55], [40, 35, 65, 55], [40, 35, 40, 10], [40, 35, 40, 60]].map(([x1, y1, x2, y2], i) => (
+                  <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`rgba(${ac},0.2)`} strokeWidth="1" />
                 ))}
               </svg>
             );
             if (areaKey === 'frontend') return (
               <div style={{
-                fontFamily:'var(--font-mono)', fontSize:'22px', fontWeight:700,
-                color:`rgb(${ac})`, letterSpacing:'4px',
-                animation:'bracket-glow 2s ease-in-out infinite'
+                fontFamily: 'var(--font-mono)', fontSize: '22px', fontWeight: 700,
+                color: `rgb(${ac})`, letterSpacing: '4px',
+                animation: 'bracket-glow 2s ease-in-out infinite'
               }}>{'< />'}</div>
             );
             if (areaKey === 'backend') return (
               <svg width="60" height="60" viewBox="0 0 60 60">
-                {[0,1,2,3].map(i => (
+                {[0, 1, 2, 3].map(i => (
                   <g key={i}>
-                    <rect x="5" y={8+i*13} width="50" height="10" rx="2"
-                      fill={`rgba(${ac},0.08)`} stroke={`rgba(${ac},0.2)`} strokeWidth="1"/>
-                    {[0,1,2].map(j => (
-                      <circle key={j} cx={48-j*8} cy={13+i*13} r="2.5"
+                    <rect x="5" y={8 + i * 13} width="50" height="10" rx="2"
+                      fill={`rgba(${ac},0.08)`} stroke={`rgba(${ac},0.2)`} strokeWidth="1" />
+                    {[0, 1, 2].map(j => (
+                      <circle key={j} cx={48 - j * 8} cy={13 + i * 13} r="2.5"
                         fill={`rgb(${ac})`} opacity="0.7"
-                        style={{animation:`server-blink 1.5s ease-in-out infinite`, animationDelay:`${(i*3+j)*0.2}s`}}/>
+                        style={{ animation: `server-blink 1.5s ease-in-out infinite`, animationDelay: `${(i * 3 + j) * 0.2}s` }} />
                     ))}
                   </g>
                 ))}
@@ -2235,84 +2212,84 @@ export default function App() {
             );
             if (areaKey === 'network' || areaKey === 'networking') return (
               <svg width="80" height="60" viewBox="0 0 80 60">
-                {[[10,30],[40,10],[70,30],[40,50],[40,30]].map(([x,y],i) => (
-                  <circle key={i} cx={x} cy={y} r="4" fill={`rgb(${ac})`} opacity="0.5"/>
+                {[[10, 30], [40, 10], [70, 30], [40, 50], [40, 30]].map(([x, y], i) => (
+                  <circle key={i} cx={x} cy={y} r="4" fill={`rgb(${ac})`} opacity="0.5" />
                 ))}
-                {[[10,30,40,10],[40,10,70,30],[70,30,40,50],[40,50,10,30],[40,30,10,30],[40,30,70,30],[40,30,40,10],[40,30,40,50]].map(([x1,y1,x2,y2],i)=>(
-                  <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`rgba(${ac},0.2)`} strokeWidth="1"/>
+                {[[10, 30, 40, 10], [40, 10, 70, 30], [70, 30, 40, 50], [40, 50, 10, 30], [40, 30, 10, 30], [40, 30, 70, 30], [40, 30, 40, 10], [40, 30, 40, 50]].map(([x1, y1, x2, y2], i) => (
+                  <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`rgba(${ac},0.2)`} strokeWidth="1" />
                 ))}
                 <circle r="3" fill={`rgb(${ac})`} opacity="0.9">
                   <animateMotion dur="3s" repeatCount="indefinite"
-                    path="M10,30 L40,10 L70,30 L40,50 Z"/>
+                    path="M10,30 L40,10 L70,30 L40,50 Z" />
                 </circle>
               </svg>
             );
             if (areaKey === 'cloud') return (
               <svg width="80" height="60" viewBox="0 0 80 60">
-                {[[20,30],[40,15],[60,30],[30,48],[50,48]].map(([x,y],i)=>(
+                {[[20, 30], [40, 15], [60, 30], [30, 48], [50, 48]].map(([x, y], i) => (
                   <circle key={i} cx={x} cy={y} r="5" fill={`rgba(${ac},0.15)`}
                     stroke={`rgba(${ac},0.4)`} strokeWidth="1"
-                    style={{animation:`float-node 3s ease-in-out infinite`, animationDelay:`${i*0.6}s`}}/>
+                    style={{ animation: `float-node 3s ease-in-out infinite`, animationDelay: `${i * 0.6}s` }} />
                 ))}
-                {[[20,30,40,15],[40,15,60,30],[20,30,30,48],[60,30,50,48],[30,48,50,48]].map(([x1,y1,x2,y2],i)=>(
-                  <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`rgba(${ac},0.2)`} strokeWidth="1"/>
+                {[[20, 30, 40, 15], [40, 15, 60, 30], [20, 30, 30, 48], [60, 30, 50, 48], [30, 48, 50, 48]].map(([x1, y1, x2, y2], i) => (
+                  <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={`rgba(${ac},0.2)`} strokeWidth="1" />
                 ))}
               </svg>
             );
             if (areaKey === 'llmops') return (
               <svg width="80" height="40" viewBox="0 0 80 40">
-                {[0,1,2,3,4].map(i=>(
+                {[0, 1, 2, 3, 4].map(i => (
                   <rect key={i} x={0} y={14} width="12" height="12" rx="2"
                     fill={`rgba(${ac},0.7)`}
-                    style={{animation:`token-flow 2s linear infinite`, animationDelay:`${i*0.4}s`}}/>
+                    style={{ animation: `token-flow 2s linear infinite`, animationDelay: `${i * 0.4}s` }} />
                 ))}
-                <line x1="0" y1="20" x2="80" y2="20" stroke={`rgba(${ac},0.15)`} strokeWidth="1"/>
+                <line x1="0" y1="20" x2="80" y2="20" stroke={`rgba(${ac},0.15)`} strokeWidth="1" />
               </svg>
             );
             // default
-            return <div style={{width:'6px',height:'6px',borderRadius:'50%',background:`rgb(${ac})`,boxShadow:`0 0 12px rgb(${ac})`}}/>;
+            return <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: `rgb(${ac})`, boxShadow: `0 0 12px rgb(${ac})` }} />;
           })()}
         </div>
 
         {/* ── STATS ── */}
-        <div style={{padding:'8px 14px', display:'flex', flexDirection:'column', gap:'10px'}}>
-          
+        <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
           {/* Progress bar */}
           <div>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:'5px'}}>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'9px',color:'rgba(255,255,255,0.3)',letterSpacing:'1.5px',textTransform:'uppercase'}}>Progreso</span>
-              <span style={{fontFamily:'var(--font-mono)',fontSize:'9px',color:`rgb(${currentChat?.ac||'0,242,254'})`}}>
-                {stages.filter(s=>s.status==='completed').length}/{stages.length}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Progreso</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: `rgb(${currentChat?.ac || '0,242,254'})` }}>
+                {stages.filter(s => s.status === 'completed').length}/{stages.length}
               </span>
             </div>
-            <div style={{height:'3px',background:'rgba(255,255,255,0.06)',borderRadius:'2px',overflow:'hidden'}}>
+            <div style={{ height: '3px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' }}>
               <div style={{
-                height:'100%', borderRadius:'2px',
-                background:`rgb(${currentChat?.ac||'0,242,254'})`,
-                width: stages.length > 0 ? `${(stages.filter(s=>s.status==='completed').length / Math.max(1, stages.length)) * 100}%` : '0%',
+                height: '100%', borderRadius: '2px',
+                background: `rgb(${currentChat?.ac || '0,242,254'})`,
+                width: stages.length > 0 ? `${(stages.filter(s => s.status === 'completed').length / Math.max(1, stages.length)) * 100}%` : '0%',
                 transition: 'width 0.8s ease',
-                boxShadow: `0 0 6px rgb(${currentChat?.ac||'0,242,254'})`
-              }}/>
+                boxShadow: `0 0 6px rgb(${currentChat?.ac || '0,242,254'})`
+              }} />
             </div>
           </div>
 
           {/* Counters row */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px'}}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             {[
-              { label:'ETAPAS', value: stages.filter(s=>s.status==='completed').length, color: currentChat?.ac||'0,242,254' },
-              { label:'TANDAS', value: stages.filter(s=>s.status==='completed').reduce((a,s)=>a+(s.tandas?.length||0),0), color:'78,238,148' }
-            ].map(({label,value,color})=>(
+              { label: 'ETAPAS', value: stages.filter(s => s.status === 'completed').length, color: currentChat?.ac || '0,242,254' },
+              { label: 'TANDAS', value: stages.filter(s => s.status === 'completed').reduce((a, s) => a + (s.tandas?.length || 0), 0), color: '78,238,148' }
+            ].map(({ label, value, color }) => (
               <div key={label} style={{
-                background:`rgba(${color},0.04)`,
-                border:`1px solid rgba(${color},0.1)`,
-                borderRadius:'3px', padding:'8px 6px', textAlign:'center'
+                background: `rgba(${color},0.04)`,
+                border: `1px solid rgba(${color},0.1)`,
+                borderRadius: '3px', padding: '8px 6px', textAlign: 'center'
               }}>
                 <div key={value} className="sidebar-stat-number" style={{
-                  fontFamily:'var(--font-mono)', fontSize:'20px', fontWeight:700,
-                  color:`rgb(${color})`, lineHeight:1,
-                  textShadow:`0 0 10px rgba(${color},0.5)`
+                  fontFamily: 'var(--font-mono)', fontSize: '20px', fontWeight: 700,
+                  color: `rgb(${color})`, lineHeight: 1,
+                  textShadow: `0 0 10px rgba(${color},0.5)`
                 }}>{value}</div>
-                <div style={{fontFamily:'var(--font-mono)',fontSize:'8px',color:'rgba(255,255,255,0.25)',letterSpacing:'1.5px',marginTop:'3px'}}>{label}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '8px', color: 'rgba(255,255,255,0.25)', letterSpacing: '1.5px', marginTop: '3px' }}>{label}</div>
               </div>
             ))}
           </div>
@@ -2320,54 +2297,54 @@ export default function App() {
           {/* Stage dots */}
           {stages.length > 0 && (
             <div>
-              <div style={{fontFamily:'var(--font-mono)',fontSize:'9px',color:'rgba(255,255,255,0.25)',letterSpacing:'1.5px',marginBottom:'6px',textTransform:'uppercase'}}>Etapas</div>
-              <div style={{display:'flex',flexWrap:'wrap',gap:'5px'}}>
-                {stages.map((s,i)=>(
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '1.5px', marginBottom: '6px', textTransform: 'uppercase' }}>Etapas</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                {stages.map((s, i) => (
                   <div key={i} title={s.name} style={{
-                    width:'8px', height:'8px', borderRadius:'50%',
-                    background: s.status==='completed' ? 'var(--green)' : s.status==='current' ? `rgb(${currentChat?.ac||'0,242,254'})` : 'rgba(255,255,255,0.1)',
-                    boxShadow: s.status==='current' ? `0 0 6px rgb(${currentChat?.ac||'0,242,254'})` : s.status==='completed' ? '0 0 4px var(--green)' : 'none',
-                    transition:'all 0.4s ease',
-                    cursor:'default'
-                  }}/>
+                    width: '8px', height: '8px', borderRadius: '50%',
+                    background: s.status === 'completed' ? 'var(--green)' : s.status === 'current' ? `rgb(${currentChat?.ac || '0,242,254'})` : 'rgba(255,255,255,0.1)',
+                    boxShadow: s.status === 'current' ? `0 0 6px rgb(${currentChat?.ac || '0,242,254'})` : s.status === 'completed' ? '0 0 4px var(--green)' : 'none',
+                    transition: 'all 0.4s ease',
+                    cursor: 'default'
+                  }} />
                 ))}
               </div>
             </div>
           )}
 
           {/* Current task */}
-          {stages.find(s=>s.status==='current') && (
+          {stages.find(s => s.status === 'current') && (
             <div style={{
-              background:'rgba(255,255,255,0.02)',
-              border:'1px solid rgba(255,255,255,0.05)',
-              borderRadius:'3px', padding:'8px 10px'
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              borderRadius: '3px', padding: '8px 10px'
             }}>
-              <div style={{fontFamily:'var(--font-mono)',fontSize:'8px',color:'rgba(255,255,255,0.25)',letterSpacing:'1.5px',marginBottom:'4px',textTransform:'uppercase'}}>En curso</div>
-              <div style={{fontFamily:'var(--font-mono)',fontSize:'10px',color:'rgba(255,255,255,0.7)',lineHeight:1.4}}>
-                {stages.find(s=>s.status==='current')?.name}
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '8px', color: 'rgba(255,255,255,0.25)', letterSpacing: '1.5px', marginBottom: '4px', textTransform: 'uppercase' }}>En curso</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.4 }}>
+                {stages.find(s => s.status === 'current')?.name}
               </div>
             </div>
           )}
         </div>
 
         {/* Spacer */}
-        <div style={{flex:1}}/>
+        <div style={{ flex: 1 }} />
 
         {/* EXIT button */}
-        <div style={{padding:'12px 14px', borderTop:'1px solid rgba(255,59,59,0.08)'}}>
+        <div style={{ padding: '12px 14px', borderTop: '1px solid rgba(255,59,59,0.08)' }}>
           <button
             onClick={exitChat}
             style={{
-              width:'100%', background:'transparent',
-              border:'1px solid rgba(255,59,59,0.15)',
-              borderRadius:'2px', padding:'10px',
-              fontFamily:'var(--font-mono)', fontSize:'10px',
-              color:'rgba(255,59,59,0.5)', cursor:'pointer',
-              letterSpacing:'1.5px', textTransform:'uppercase',
-              transition:'all 0.2s'
+              width: '100%', background: 'transparent',
+              border: '1px solid rgba(255,59,59,0.15)',
+              borderRadius: '2px', padding: '10px',
+              fontFamily: 'var(--font-mono)', fontSize: '10px',
+              color: 'rgba(255,59,59,0.5)', cursor: 'pointer',
+              letterSpacing: '1.5px', textTransform: 'uppercase',
+              transition: 'all 0.2s'
             }}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(255,59,59,0.5)';e.currentTarget.style.color='rgba(255,59,59,0.9)';e.currentTarget.style.background='rgba(255,59,59,0.06)'}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,59,59,0.15)';e.currentTarget.style.color='rgba(255,59,59,0.5)';e.currentTarget.style.background='transparent'}}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,59,59,0.5)'; e.currentTarget.style.color = 'rgba(255,59,59,0.9)'; e.currentTarget.style.background = 'rgba(255,59,59,0.06)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,59,59,0.15)'; e.currentTarget.style.color = 'rgba(255,59,59,0.5)'; e.currentTarget.style.background = 'transparent' }}
           >
             {'< EXIT_SYSTEM'}
           </button>
@@ -2396,6 +2373,134 @@ export default function App() {
       <CyberBackground />
       <div className="scan-overlay" />
       {renderContent()}
+      
+      {/* ── MANDATORY OVERLAY MODAL FOR API KEY ── */}
+      {showKeyModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(2,5,10,0.88)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999,
+            animation: 'fadeIn 0.25s ease',
+          }}
+        >
+          <div style={{
+            background: 'rgba(7,11,17,0.98)',
+            border: '1px solid rgba(0,242,254,0.2)',
+            borderRadius: '6px',
+            maxWidth: '460px', width: '90%',
+            overflow: 'hidden',
+            animation: 'modalIn 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+            position: 'relative',
+          }}>
+            {/* macOS header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '12px 16px',
+              borderBottom: '1px solid rgba(0,242,254,0.08)',
+              background: 'rgba(0,242,254,0.03)',
+            }}>
+              <span style={{ width:11, height:11, borderRadius:'50%', background:'#FF5F57', display:'inline-block' }}/>
+              <span style={{ width:11, height:11, borderRadius:'50%', background:'#FEBC2E', display:'inline-block' }}/>
+              <span style={{ width:11, height:11, borderRadius:'50%', background:'#28C840', display:'inline-block' }}/>
+              <span style={{
+                flex:1, textAlign:'center',
+                fontFamily: 'var(--font-mono)', fontSize:'10px',
+                color:'rgba(255,255,255,0.3)', letterSpacing:'2px'
+              }}>TECHPATH_OS · AUTH_REQUIRED</span>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '28px 32px' }}>
+              <h2 style={{
+                fontFamily: 'var(--font-mono)', fontSize:'13px',
+                color:'#00F2FE', margin:'0 0 6px',
+                textTransform:'uppercase', letterSpacing:'2px'
+              }}>[ AUTH_REQUIRED ]</h2>
+              <p style={{
+                fontFamily:'Inter, sans-serif', fontSize:'12px',
+                color:'rgba(255,255,255,0.4)', margin:'0 0 24px', lineHeight:1.6
+              }}>
+                TechPath requiere una API Key gratuita de Groq para funcionar. Se almacena localmente en tu navegador — nunca sale de tu dispositivo.
+              </p>
+
+              {/* Steps */}
+              <ol style={{
+                fontFamily:'var(--font-mono)', fontSize:'11px',
+                color:'rgba(255,255,255,0.55)', paddingLeft:'20px',
+                lineHeight:'2', margin:'0 0 24px'
+              }}>
+                <li>Ve a <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer"
+                  style={{ color:'#00F2FE', textDecoration:'none', textShadow:'0 0 8px rgba(0,242,254,0.4)' }}>
+                  console.groq.com/keys
+                </a></li>
+                <li>Crea una cuenta gratuita si no tienes una</li>
+                <li>Genera una nueva API Key</li>
+                <li>Pégala en el campo de abajo</li>
+              </ol>
+
+              {/* Input */}
+              <input
+                ref={keyRef}
+                type="password"
+                value={keyInput}
+                onChange={e => { setKeyInput(e.target.value); setKeyError(''); }}
+                onKeyDown={e => e.key === 'Enter' && saveKey()}
+                placeholder="gsk_..."
+                disabled={keyLoading}
+                style={{
+                  width:'100%', boxSizing:'border-box',
+                  background:'rgba(0,242,254,0.04)',
+                  border:'1px solid rgba(0,242,254,0.2)',
+                  borderRadius:'3px', padding:'12px 14px',
+                  fontFamily:'var(--font-mono)', fontSize:'13px',
+                  color:'rgba(255,255,255,0.85)', outline:'none',
+                  marginBottom:'8px',
+                }}
+              />
+
+              {/* Warning */}
+              <p style={{
+                fontFamily:'var(--font-mono)', fontSize:'9px',
+                color:'rgba(255,100,100,0.6)', margin:'0 0 16px',
+                letterSpacing:'0.5px'
+              }}>
+                ⚠ No uses esta app en computadoras compartidas.
+              </p>
+
+              {keyError && (
+                <p style={{
+                  fontFamily:'var(--font-mono)', fontSize:'11px',
+                  color:'#ff4444', margin:'0 0 16px'
+                }}>{keyError}</p>
+              )}
+
+              {/* Button */}
+              <button
+                onClick={saveKey}
+                disabled={!keyInput.trim() || keyLoading}
+                style={{
+                  width:'100%', padding:'13px',
+                  background: keyInput.trim() && !keyLoading
+                    ? 'linear-gradient(135deg,#3DEBA0,#00D4E8)'
+                    : 'rgba(0,242,254,0.06)',
+                  border:'none', borderRadius:'3px',
+                  fontFamily:'var(--font-mono)', fontSize:'12px', fontWeight:700,
+                  color: keyInput.trim() && !keyLoading ? '#030810' : 'rgba(255,255,255,0.2)',
+                  cursor: !keyInput.trim() || keyLoading ? 'not-allowed' : 'pointer',
+                  letterSpacing:'2px', textTransform:'uppercase',
+                  transition:'all 0.2s',
+                }}
+              >
+                {keyLoading ? 'VALIDATING...' : 'EXECUTE'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <Analytics />
     </>
   );
