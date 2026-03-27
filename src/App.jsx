@@ -1078,140 +1078,479 @@ const WizardScreen = React.memo(({ screen, setScreen, isMobile, area, customGoal
   );
 });
 
-const DashboardScreen = React.memo(({ isMobile, isMenuOpen, setIsMenuOpen, sidebarContent, messages, input, setInput, loading, error, mentorName, ac, send, chatEndRef, stages, activeStageId, operatorProfile, C, MD, activeStage, completedCount, isDashboardLoading, inputRef }) => {
+const HelperChat = ({ geminiCall }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [msgs, setMsgs] = React.useState([]);
+  const [input, setInput] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const bottomRef = React.useRef(null);
+  const inputRef = React.useRef(null);
+
+  const HELPER_PROMPT = `Eres TechHelper, un asistente técnico experto integrado en TechPath, una plataforma de aprendizaje IT. Tu misión es resolver CUALQUIER duda técnica que el usuario tenga mientras estudia — desde conceptos básicos hasta problemas avanzados.
+
+PERSONALIDAD: Cercano, claro y directo. Como un compañero senior que explica sin condescender.
+
+REGLAS:
+- Responde siempre en el idioma del usuario
+- Si necesitas código, usa bloques de código con el lenguaje especificado
+- Explica el "por qué" no solo el "cómo" — el usuario está aprendiendo
+- Si la pregunta es vaga, pide un ejemplo concreto antes de responder
+- Cubre TODO lo técnico: programación, redes, ciberseguridad, cloud, AI/ML, DevOps, Linux, bases de datos, herramientas, comandos, conceptos, errores, bugs
+- Si el usuario pega un error, analízalo y da la solución exacta
+- Máximo 150 palabras salvo que el código requiera más
+- Sin emojis, sin headers markdown innecesarios`;
+
+  const scrollBottom = () => setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    const newMsgs = [...msgs, { role: 'user', content: text }];
+    setMsgs(newMsgs);
+    setInput('');
+    setLoading(true);
+    scrollBottom();
+    try {
+      const res = await geminiCall(
+        newMsgs.map(m => ({ role: m.role, content: m.content })),
+        HELPER_PROMPT
+      );
+      setMsgs(prev => [...prev, { role: 'assistant', content: res }]);
+    } catch (e) {
+      setMsgs(prev => [...prev, { role: 'assistant', content: `[ERROR]: ${e.message}` }]);
+    } finally {
+      setLoading(false);
+      scrollBottom();
+    }
+  };
+
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-base)', color: 'var(--text-primary)', overflow: 'hidden', position: 'relative' }}>
-      {/* ... (rest of DashboardScreen content) */}
-      <div className="scanline"></div>
+  <div style={{
+    margin: '16px 0 0',
+    borderRadius: '4px',
+    overflow: 'hidden',
+    border: '1px solid rgba(0,242,254,0.25)',
+    background: 'rgba(0,242,254,0.04)',
+    boxShadow: '0 0 20px rgba(0,242,254,0.06)',
+  }}>
+    {/* Header / Toggle */}
+    <button
+      onClick={() => { setIsOpen(o => !o); setTimeout(() => inputRef.current?.focus(), 200); }}
+      style={{
+        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 14px', background: 'rgba(0,242,254,0.06)', border: 'none',
+        borderBottom: isOpen ? '1px solid rgba(0,242,254,0.15)' : 'none',
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{
+          width: '7px', height: '7px', borderRadius: '50%',
+          background: loading ? '#4EEE94' : '#00F2FE',
+          boxShadow: loading ? '0 0 8px #4EEE94' : '0 0 8px #00F2FE',
+          animation: loading ? 'dot-pulse 1s ease-in-out infinite' : 'none'
+        }}/>
+        <span style={{
+          fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700,
+          color: '#00F2FE', letterSpacing: '2px', textTransform: 'uppercase'
+        }}>
+          [ Chat de Ayuda ]
+        </span>
+      </div>
+      <span style={{
+        fontFamily: 'var(--font-mono)', fontSize: '12px',
+        color: '#00F2FE', transition: 'transform 0.2s',
+        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block'
+      }}>▾</span>
+    </button>
 
-      {isMobile && isMenuOpen && <div onClick={() => setIsMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(4,8,15,0.8)', backdropFilter: 'var(--glass)' }} />}
-      <aside style={{ width: isMobile ? (isMenuOpen ? '85%' : '0') : '280px', flexShrink: 0, borderRight: '1px solid var(--border-subtle)', background: 'var(--bg-panel)', transition: 'width 0.3s cubic-bezier(0.19, 1, 0.22, 1)', zIndex: 110, overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {(!isMobile || isMenuOpen) && sidebarContent}
-      </aside>
-
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative', background: 'radial-gradient(circle at 50% 50%, rgba(0,242,254,0.01) 0%, transparent 80%)' }}>
-        <header style={{ height: '64px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', background: 'rgba(4,8,15,0.7)', backdropFilter: 'var(--glass)', zIndex: 50 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {isMobile && <button onClick={() => setIsMenuOpen(true)} className="btn-ghost" style={{ padding: '8px 12px', fontSize: '11px' }}>[ MENU ]</button>}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div className="dot-pulse" style={{ background: `rgb(${ac})`, boxShadow: `0 0 10px rgba(${ac}, 0.5)` }} />
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: `rgb(${ac})`, letterSpacing: '2px', fontWeight: '700' }}>LINK_ACTIVE // {mentorName}</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>ENCRYPT: <span style={{ color: 'var(--green)' }}>LOCAL_ENCRYPTED</span></div>
-          </div>
-        </header>
-
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '24px 20px' : '48px 40px', display: 'flex', flexDirection: 'column', gap: '32px' }} className="custom-scrollbar">
-          {isDashboardLoading ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div className="eyebrow-tag" style={{ marginBottom: '24px' }}><span className="dot-pulse"></span> [ INITIATING_BOOT_SEQUENCE ]</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--cyan)', opacity: 0.8 }}>Establishing secure link for {operatorProfile.area}... <span style={{ color: 'var(--green)' }}>[OK]</span></div>
+    {isOpen && (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Messages */}
+        <div style={{
+          height: '340px', overflowY: 'auto', padding: '10px 12px',
+          display: 'flex', flexDirection: 'column', gap: '8px',
+          scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,242,254,0.15) transparent'
+        }}>
+          {msgs.length === 0 && (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', height: '100%', gap: '8px'
+            }}>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: '11px',
+                color: 'rgba(0,242,254,0.6)', textAlign: 'center', lineHeight: 1.8
+              }}>
+                ¿Tienes una duda técnica?<br/>
+                <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '10px' }}>
+                  Pregunta sobre conceptos, comandos,<br/>errores o código de tu curso.
+                </span>
               </div>
+              <div style={{
+                marginTop: '8px', padding: '6px 10px',
+                border: '1px solid rgba(0,242,254,0.12)', borderRadius: '3px',
+                background: 'rgba(0,242,254,0.03)',
+              }}>
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '9px',
+                  color: 'rgba(255,255,255,0.25)', letterSpacing: '1px'
+                }}>
+                  Escribe <span style={{ color: '#00F2FE' }}>limpiar</span> para resetear el chat
+                </span>
+              </div>
+            </div>
+          )}
+          {msgs.map((m, i) => (
+            <div key={i} style={{
+              padding: '8px 10px', borderRadius: '3px', fontSize: '12px',
+              fontFamily: m.role === 'user' ? 'var(--font-mono)' : 'Inter, sans-serif',
+              lineHeight: 1.6,
+              background: m.role === 'user' ? 'rgba(0,242,254,0.06)' : 'rgba(78,238,148,0.05)',
+              borderLeft: `2px solid ${m.role === 'user' ? '#00F2FE' : '#4EEE94'}`,
+              color: m.role === 'user' ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.75)',
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word'
+            }}>
+              {m.content}
+            </div>
+          ))}
+          {loading && (
+            <div style={{
+              fontFamily: 'var(--font-mono)', fontSize: '11px',
+              color: '#4EEE94', padding: '6px 10px',
+              borderLeft: '2px solid rgba(78,238,148,0.4)',
+              background: 'rgba(78,238,148,0.03)',
+            }}>{'> procesando_'}</div>
+          )}
+          <div ref={bottomRef}/>
+        </div>
+
+        {/* Input */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '8px 12px',
+          borderTop: '1px solid rgba(0,242,254,0.12)',
+          background: 'rgba(0,0,0,0.3)'
+        }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#00F2FE' }}>›</span>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                if (input.trim().toLowerCase() === 'limpiar') { setMsgs([]); setInput(''); }
+                else send();
+              }
+            }}
+            placeholder="Escribe tu duda..."
+            style={{
+              flex: 1, background: 'transparent', border: 'none', outline: 'none',
+              fontFamily: 'var(--font-mono)', fontSize: '11px',
+              color: 'rgba(255,255,255,0.8)',
+            }}
+          />
+          <button
+            onClick={() => {
+              if (input.trim().toLowerCase() === 'limpiar') { setMsgs([]); setInput(''); }
+              else send();
+            }}
+            disabled={loading || !input.trim()}
+            style={{
+              background: input.trim() && !loading ? 'rgba(0,242,254,0.1)' : 'transparent',
+              border: '1px solid rgba(0,242,254,0.3)',
+              borderRadius: '2px', padding: '4px 10px',
+              fontFamily: 'var(--font-mono)', fontSize: '10px',
+              color: '#00F2FE', cursor: 'pointer',
+              opacity: loading || !input.trim() ? 0.3 : 1,
+              transition: 'all 0.2s'
+            }}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+);};
+
+const DashboardScreen = React.memo(({ isMobile, isMenuOpen, setIsMenuOpen, isRightOpen, setIsRightOpen, sidebarContent, messages, input, setInput, loading, error, mentorName, ac, send, chatEndRef, stages, activeStageId, operatorProfile, C, MD, activeStage, completedCount, isDashboardLoading, inputRef, geminiCall }) => {
+  return (
+  <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden', background:'var(--bg)', position:'relative' }}>
+
+    {/* ── NAVBAR ── */}
+    <div style={{
+      height:'48px', display:'flex', alignItems:'center', justifyContent:'space-between',
+      padding:'0 12px', borderBottom:'1px solid rgba(0,242,254,0.08)',
+      background:'rgba(4,8,15,0.95)', backdropFilter:'blur(12px)',
+      flexShrink:0, zIndex:100, gap:'8px'
+    }}>
+      {/* Left: Menu toggle */}
+      <button onClick={() => setIsMenuOpen(o => !o)} style={{
+        background: isMenuOpen ? 'rgba(0,242,254,0.1)' : 'transparent',
+        border:'1px solid rgba(0,242,254,0.15)',
+        borderRadius:'2px', padding:'5px 8px', cursor:'pointer',
+        fontFamily:'var(--font-mono)', fontSize:'9px',
+        color: isMenuOpen ? '#00F2FE' : 'rgba(0,242,254,0.7)',
+        letterSpacing:'1px', flexShrink:0
+      }}>[ MENU ]</button>
+
+      {/* Center: status */}
+      <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', minWidth:0 }}>
+        <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'var(--green)', boxShadow:'0 0 6px var(--green)', flexShrink:0 }}/>
+        <span style={{
+          fontFamily:'var(--font-mono)', fontSize:'10px', color:'rgba(255,255,255,0.6)',
+          letterSpacing:'1px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'
+        }}>
+          LINK_ACTIVE // {mentorName || 'SISTEMA'}
+        </span>
+        <span style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.4)', flexShrink:0 }}>
+          ENCRYPT: LOCAL_ENCRYPTED
+        </span>
+      </div>
+
+      {/* Right: Intel toggle */}
+      <button onClick={() => setIsRightOpen(o => !o)} style={{
+        background: isRightOpen ? 'rgba(0,242,254,0.1)' : 'transparent',
+        border:'1px solid rgba(0,242,254,0.15)',
+        borderRadius:'2px', padding:'5px 8px', cursor:'pointer',
+        fontFamily:'var(--font-mono)', fontSize:'9px',
+        color: isRightOpen ? '#00F2FE' : 'rgba(0,242,254,0.7)',
+        letterSpacing:'1px', flexShrink:0
+      }}>[ INTEL ]</button>
+    </div>
+
+    {/* ── BODY ── */}
+    <div style={{ flex:1, display:'flex', overflow:'hidden', position:'relative' }}>
+
+      {/* LEFT SIDEBAR — drawer on mobile/tablet, fixed on desktop */}
+      <>
+        {isMenuOpen && (
+          <div onClick={() => setIsMenuOpen(false)} style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.6)',
+            zIndex:199, display:'block'
+          }}/>
+        )}
+        <div style={{
+          width:'200px', flexShrink:0,
+          background:'var(--bg-panel)',
+          borderRight:'1px solid rgba(0,242,254,0.07)',
+          overflowY:'auto', overflowX:'hidden',
+          position: window.innerWidth >= 1024 ? 'relative' : 'fixed',
+          top: window.innerWidth >= 1024 ? 'auto' : '48px',
+          left: window.innerWidth >= 1024 ? 'auto' : 0,
+          height: window.innerWidth >= 1024 ? 'auto' : 'calc(100vh - 48px)',
+          zIndex: window.innerWidth >= 1024 ? 1 : 200,
+          transform: window.innerWidth >= 1024 ? 'none' : (isMenuOpen ? 'translateX(0)' : 'translateX(-100%)'),
+          transition:'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+          flexDirection:'column'
+        }}>
+          {sidebarContent}
+        </div>
+      </>
+
+      {/* CENTER CHAT */}
+      <div style={{
+        flex:1, display:'flex', flexDirection:'column',
+        minWidth:0, overflow:'hidden',
+        background:'var(--bg)'
+      }}>
+        {/* Messages area */}
+        <div style={{
+          flex:1, overflowY:'auto', padding:'16px',
+          display:'flex', flexDirection:'column', gap:'12px',
+          scrollbarWidth:'thin', scrollbarColor:'rgba(0,242,254,0.1) transparent'
+        }}>
+          {isDashboardLoading ? (
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%' }}>
+              <span style={{ fontFamily:'var(--font-mono)', fontSize:'12px', color:'rgba(0,242,254,0.5)' }}>
+                INICIALIZANDO SISTEMA...
+              </span>
             </div>
           ) : (
             messages.filter(m => !m.isHidden).map((m, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: isMobile ? '100%' : '85%', alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  {m.role === 'user' ? 'OPERATOR' : `SYS_${mentorName.toUpperCase()}`} // {new Date(m.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-                <div className="glass-card" style={{ padding: '20px 24px', borderRadius: '4px', borderLeft: m.role === 'user' ? 'none' : `3px solid rgb(${ac})`, borderRight: m.role === 'user' ? '3px solid var(--green)' : 'none', background: m.role === 'user' ? 'rgba(78,238,148,0.03)' : 'rgba(0,242,254,0.03)' }}>
+              <div key={i} style={{
+                display:'flex', flexDirection:'column',
+                alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                gap:'4px'
+              }}>
+                {m.role === 'assistant' && (
+                  <span style={{
+                    fontFamily:'var(--font-mono)', fontSize:'9px',
+                    color:'rgba(0,242,254,0.4)', letterSpacing:'1px',
+                    paddingLeft:'12px'
+                  }}>
+                    SYS_{(mentorName||'MENTOR').toUpperCase().replace(/\s/g,'_')} // {new Date(m.timestamp || Date.now()).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+                  </span>
+                )}
+                <div style={{
+                  maxWidth:'85%',
+                  padding:'10px 14px',
+                  borderRadius: m.role === 'user' ? '6px 2px 6px 6px' : '2px 6px 6px 6px',
+                  background: m.role === 'user' ? 'rgba(0,242,254,0.06)' : 'rgba(255,255,255,0.03)',
+                  borderLeft: m.role === 'assistant' ? `2px solid rgba(${ac||'0,242,254'},0.5)` : 'none',
+                  borderRight: m.role === 'user' ? '2px solid rgba(78,238,148,0.5)' : 'none',
+                  fontSize:'13px', lineHeight:1.65,
+                  color: m.role === 'user' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.75)',
+                  wordBreak:'break-word'
+                }}>
                   {m.role === 'user' ? (
-                    <div style={{ fontFamily: 'var(--font-body)', fontSize: '15px', color: '#fff', lineHeight: 1.6 }}>{m.content}</div>
+                    <div style={{ fontFamily:'var(--font-mono)', whiteSpace:'pre-wrap' }}>{m.content}</div>
                   ) : (
                     <MD text={m.content} />
                   )}
                 </div>
+                {m.role === 'user' && (
+                  <span style={{
+                    fontFamily:'var(--font-mono)', fontSize:'9px',
+                    color:'rgba(78,238,148,0.4)', letterSpacing:'1px',
+                    paddingRight:'12px'
+                  }}>OPERATOR</span>
+                )}
               </div>
             ))
           )}
-          <div ref={chatEndRef} style={{ height: '40px' }} />
+          {loading && messages.length > 0 && !messages.some(m => m.isStreaming) && (
+            <div style={{
+              padding:'10px 14px', borderLeft:`2px solid rgba(${ac||'0,242,254'},0.3)`,
+              background:'rgba(255,255,255,0.02)', borderRadius:'2px 6px 6px 6px',
+              maxWidth:'85%'
+            }}>
+              <span style={{ fontFamily:'var(--font-mono)', fontSize:'12px', color:'rgba(0,242,254,0.5)' }}>
+                {'> procesando_'}
+              </span>
+            </div>
+          )}
+          {error && (
+            <div style={{
+              padding:'10px 14px', borderLeft:'2px solid rgba(255,59,59,0.5)',
+              background:'rgba(255,59,59,0.04)', borderRadius:'2px',
+              fontFamily:'var(--font-mono)', fontSize:'11px', color:'rgba(255,59,59,0.7)'
+            }}>{error}</div>
+          )}
+          <div ref={chatEndRef}/>
         </div>
 
-        <footer style={{ padding: '24px 40px', borderTop: '1px solid var(--border-subtle)', background: 'rgba(4,8,15,0.85)', backdropFilter: 'var(--glass)' }}>
-          <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', gap: '16px', position: 'relative' }}>
-            <span style={{ position: 'absolute', left: '16px', top: '16px', color: 'var(--cyan)', fontFamily: 'var(--font-mono)' }}>&gt;</span>
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => {
-                setInput(e.target.value);
-                e.target.style.height = 'auto';
-                e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              placeholder="Ingresar comando de respuesta..."
-              rows={1}
-              disabled={loading}
-              aria-label="Message Input"
-              style={{
-                resize: 'none',
-                overflowY: 'auto',
-                minHeight: '44px',
-                maxHeight: '160px',
-                width: '100%',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid var(--border-tactical)',
-                outline: 'none',
-                color: '#fff',
-                fontFamily: "'Fira Code', monospace",
-                fontSize: '13px',
-                lineHeight: '1.6',
-                padding: '12px 100px 12px 36px',
-              }}
-            />
-            <button onClick={send} disabled={loading || !input.trim()} className="btn-primary" style={{ position: 'absolute', right: '8px', top: '8px', height: '44px' }} aria-label="Send Message">SEND</button>
-          </div>
-        </footer>
-      </main>
+        {/* Input area */}
+        <div style={{
+          borderTop:'1px solid rgba(0,242,254,0.09)',
+          padding:'10px 16px',
+          background:'rgba(4,8,15,0.8)',
+          display:'flex', alignItems:'flex-end', gap:'10px'
+        }}>
+          <span style={{ fontFamily:'var(--font-mono)', fontSize:'14px', color:'rgba(0,242,254,0.5)', paddingBottom:'10px', flexShrink:0 }}>›</span>
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={e => {
+              setInput(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            placeholder="Ingresar comando de respuesta..."
+            rows={1}
+            disabled={loading}
+            aria-label="Message Input"
+            style={{
+              flex:1, background:'transparent', border:'none', outline:'none', resize:'none',
+              fontFamily:'var(--font-mono)', fontSize:'13px',
+              color:'rgba(255,255,255,0.8)', lineHeight:1.5,
+              minHeight:'20px', maxHeight:'120px', overflowY:'auto',
+              padding:'8px 0'
+            }}
+          />
+          <button
+            onClick={send}
+            disabled={loading || !input.trim()}
+            aria-label="Send Message"
+            style={{
+              background: input.trim() && !loading ? 'linear-gradient(135deg,#3DEBA0,#00D4E8)' : 'rgba(0,242,254,0.08)',
+              border:'none', borderRadius:'3px', padding:'10px 20px',
+              fontFamily:'var(--font-mono)', fontSize:'12px', fontWeight:700,
+              color: input.trim() && !loading ? '#030810' : 'rgba(255,255,255,0.2)',
+              cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+              transition:'all 0.2s', flexShrink:0, letterSpacing:'1px'
+            }}
+          >
+            SEND
+          </button>
+        </div>
+      </div>
 
-      {!isMobile && (
-        <aside style={{ width: '320px', height: '100%', background: 'var(--bg-panel)', borderLeft: '1px solid var(--border-subtle)', padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px', overflowY: 'auto' }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '16px', letterSpacing: '2px' }}>[ TACTICAL_OVERVIEW ]</div>
-            <div className="glass-card" style={{ padding: '24px', borderRadius: '4px' }}>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--cyan)', marginBottom: '8px' }}>TARGET_GOAL:</div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: '700', color: '#fff' }}>{operatorProfile.area}</div>
-              <div style={{ marginTop: '20px', height: '2px', background: 'rgba(255,255,255,0.05)', borderRadius: '1px' }}>
-                <div style={{ width: `${stages.length > 0 ? (completedCount / stages.length) * 100 : 0}%`, height: '100%', background: 'var(--cyan)', boxShadow: '0 0 10px var(--cyan)' }}></div>
+      {/* RIGHT PANEL — drawer on mobile/tablet, fixed on desktop */}
+      <>
+        {isRightOpen && window.innerWidth < 1024 && (
+          <div onClick={() => setIsRightOpen(false)} style={{
+            position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:199
+          }}/>
+        )}
+        <div style={{
+          width:'260px', flexShrink:0,
+          background:'var(--bg-panel)',
+          borderLeft:'1px solid rgba(0,242,254,0.07)',
+          overflowY:'auto', overflowX:'hidden',
+          position: window.innerWidth >= 1024 ? 'relative' : 'fixed',
+          top: window.innerWidth >= 1024 ? 'auto' : '48px',
+          right: window.innerWidth >= 1024 ? 'auto' : 0,
+          height: window.innerWidth >= 1024 ? 'auto' : 'calc(100vh - 48px)',
+          zIndex: window.innerWidth >= 1024 ? 1 : 200,
+          transform: window.innerWidth >= 1024 ? 'none' : (isRightOpen ? 'translateX(0)' : 'translateX(100%)'),
+          transition:'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+          padding:'16px'
+        }}>
+          {/* TARGET_GOAL */}
+          <div style={{ marginBottom:'16px', padding:'12px', background:'rgba(0,242,254,0.03)', border:'1px solid rgba(0,242,254,0.1)', borderRadius:'3px' }}>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.5)', letterSpacing:'1.5px', marginBottom:'6px' }}>TARGET_GOAL:</div>
+            <div style={{ fontFamily:'Space Grotesk, sans-serif', fontSize:'15px', fontWeight:700, color:'rgba(255,255,255,0.9)', marginBottom:'10px' }}>
+              {operatorProfile?.area || 'OBJETIVO'}
+            </div>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(255,255,255,0.3)', marginBottom:'4px', letterSpacing:'1px' }}>PROGRESS: {stages.length > 0 ? Math.round((stages.filter(s=>s.status==='completed').length/stages.length)*100) : 0}%</div>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div style={{ height:'3px', flex:1, background:'rgba(255,255,255,0.06)', borderRadius:'2px', overflow:'hidden', marginRight:'8px' }}>
+                <div style={{ height:'100%', background:`rgb(${ac||'0,242,254'})`, width: stages.length > 0 ? `${(stages.filter(s=>s.status==='completed').length/stages.length)*100}%` : '0%', transition:'width 0.8s ease', borderRadius:'2px' }}/>
               </div>
-              <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
-                <span>PROGRESS: {stages.length > 0 ? Math.round((completedCount / stages.length) * 100) : 0}%</span>
-                <span>{completedCount}/{stages.length || 0} NODES</span>
-              </div>
+              <span style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(255,255,255,0.3)', flexShrink:0 }}>{stages.filter(s=>s.status==='completed').length}/{stages.length} NODES</span>
             </div>
           </div>
 
-          <div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', marginBottom: '16px', letterSpacing: '2px' }}>[ OPERATIONAL_INTEL ]</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div className="glass-card" style={{ padding: '16px', borderRadius: '4px', fontSize: '12px' }}>
-                <div style={{ color: 'var(--green)', marginBottom: '4px', fontFamily: 'var(--font-mono)', fontSize: '10px' }}>ACTIVE_TASK:</div>
-                <div style={{ color: 'rgba(255,255,255,0.7)' }}>{activeStage?.name || 'Iniciando diagnóstico...'}</div>
-              </div>
-              <div className="glass-card" style={{ padding: '16px', borderRadius: '4px', fontSize: '12px' }}>
-                <div style={{ color: 'var(--cyan)', marginBottom: '4px', fontFamily: 'var(--font-mono)', fontSize: '10px' }}>CURRENT_STACK:</div>
-                <div style={{ color: 'rgba(255,255,255,0.7)' }}>{operatorProfile.stack}</div>
-              </div>
+          {/* OPERATIONAL_INTEL */}
+          <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.4)', letterSpacing:'2px', marginBottom:'10px' }}>[ OPERATIONAL_INTEL ]</div>
+
+          <div style={{ marginBottom:'8px', padding:'10px 12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:'3px' }}>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.4)', letterSpacing:'1.5px', marginBottom:'4px' }}>ACTIVE_TASK:</div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:'12px', color:'rgba(255,255,255,0.7)' }}>{activeStage?.name || 'Iniciando diagnóstico...'}</div>
+          </div>
+
+          <div style={{ marginBottom:'16px', padding:'10px 12px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:'3px' }}>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.4)', letterSpacing:'1.5px', marginBottom:'4px' }}>CURRENT_STACK:</div>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:'12px', color:'rgba(255,255,255,0.7)' }}>{operatorProfile?.stack || '● READY'}</div>
+          </div>
+
+          {/* Usage guide */}
+          <div style={{ marginBottom:'8px', padding:'10px 12px', border:'1px solid rgba(255,255,255,0.06)', borderRadius:'3px', background:'rgba(255,255,255,0.02)' }}>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.35)', letterSpacing:'1.5px', marginBottom:'6px', textTransform:'uppercase' }}>Guía de uso</div>
+            <div style={{ fontFamily:'Inter,sans-serif', fontSize:'11px', color:'rgba(255,255,255,0.3)', lineHeight:1.6 }}>
+              Usa el chat de abajo para resolver dudas técnicas sobre tu curso: conceptos, comandos, errores o código. Es independiente de tu mentor.
             </div>
           </div>
 
-          <div style={{ marginTop: 'auto' }}>
-            <div className="eyebrow-tag" style={{ width: '100%', justifyContent: 'center' }}>
-              <span className="dot-pulse"></span> ENCRYPT_MODE_ACTIVE
-            </div>
+          <HelperChat geminiCall={geminiCall} />
+
+          {/* ENCRYPT badge */}
+          <div style={{ marginTop:'16px', display:'flex', justifyContent:'flex-end' }}>
+            <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'rgba(0,242,254,0.3)', letterSpacing:'1px' }}>● ENCRYPT_MODE_ACTIVE</div>
           </div>
-        </aside>
-      )}
+        </div>
+      </>
+
     </div>
-  );
+  </div>
+);
 });
 
 
@@ -1251,6 +1590,7 @@ export default function App() {
 
   // Mobile responsive state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isRightOpen, setIsRightOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Sync refs for stale closure protection
@@ -2044,6 +2384,8 @@ export default function App() {
         operatorProfile={operatorProfile} C={C} MD={MD}
         activeStage={activeStage} completedCount={completedCount}
         isDashboardLoading={isDashboardLoading} inputRef={inputRef}
+        geminiCall={geminiCall}
+        isRightOpen={isRightOpen} setIsRightOpen={setIsRightOpen}
       />
     );
   };
