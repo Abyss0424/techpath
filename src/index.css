@@ -650,9 +650,6 @@
   :root {
     font-size: 14px;
   }
-}
-  }
-
   .custom-cursor {
     display: none;
   }
@@ -663,6 +660,7 @@
     font-size: 13px;
   }
 }
+
 
 /* ── Touch devices: hide custom cursor ───────────────────────────────────── */
 @media (pointer: coarse) {
