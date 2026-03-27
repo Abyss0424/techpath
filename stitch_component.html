@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KINETIC VOID | Neural Lattice</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "on-surface": "#e5e2e1",
+            "outline": "#849495",
+            "secondary-fixed-dim": "#3de189",
+            "on-primary": "#00373a",
+            "secondary-container": "#03c772",
+            "error": "#ffb4ab",
+            "surface-container-highest": "#353534",
+            "on-secondary": "#00391c",
+            "surface-tint": "#00dce6",
+            "inverse-surface": "#e5e2e1",
+            "on-primary-fixed-variant": "#004f53",
+            "on-tertiary-fixed-variant": "#5f00c0",
+            "tertiary": "#fdf5ff",
+            "outline-variant": "#3a494b",
+            "inverse-primary": "#00696f",
+            "on-error-container": "#ffdad6",
+            "on-primary-fixed": "#002022",
+            "on-primary-container": "#006a70",
+            "on-secondary-fixed": "#00210e",
+            "on-error": "#690005",
+            "on-surface-variant": "#b9cacb",
+            "on-background": "#e5e2e1",
+            "primary-fixed-dim": "#00dce6",
+            "surface": "#131313",
+            "error-container": "#93000a",
+            "surface-container-low": "#1c1b1b",
+            "surface-bright": "#3a3939",
+            "on-secondary-fixed-variant": "#00522c",
+            "tertiary-fixed-dim": "#d5baff",
+            "on-tertiary-fixed": "#270057",
+            "surface-container-lowest": "#0e0e0e",
+            "surface-dim": "#131313",
+            "surface-container-high": "#2a2a2a",
+            "primary-fixed": "#6ff6ff",
+            "surface-variant": "#353534",
+            "inverse-on-surface": "#313030",
+            "secondary-fixed": "#61fea2",
+            "tertiary-fixed": "#ecdcff",
+            "on-tertiary-container": "#7f00fd",
+            "on-tertiary": "#42008a",
+            "background": "#131313",
+            "surface-container": "#201f1f",
+            "secondary": "#41e48b",
+            "primary": "#e0fdff",
+            "on-secondary-container": "#004c28",
+            "tertiary-container": "#e6d3ff",
+            "primary-container": "#00f2fe"
+          },
+          fontFamily: {
+            "headline": ["Space Grotesk"],
+            "body": ["Inter"],
+            "label": ["Space Grotesk"]
+          },
+          borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      background-color: #0e0e0e;
+      color: #e5e2e1;
+      overflow: hidden;
+    }
+    .mesh-grid {
+      background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .glass-node {
+      backdrop-filter: blur(12px);
+      background: rgba(53, 53, 52, 0.4);
+    }
+    .connection-line {
+      filter: blur(2px);
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      animation: dash 10s linear infinite;
+    }
+    @keyframes dash {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+    .hologram-text {
+      text-shadow: 0 0 10px rgba(0, 242, 254, 0.8);
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body class="font-body selection:bg-primary-container selection:text-on-primary-container">
+<!-- Shared Component: TopNavBar -->
+<header class="fixed top-0 w-full flex justify-between items-center px-8 h-20 bg-[#0e0e0e]/80 backdrop-blur-xl z-50 transition-all duration-300">
+<div class="flex items-center gap-8">
+<div class="text-2xl font-black tracking-tighter text-[#00f2fe] drop-shadow-[0_0_8px_rgba(0,242,254,0.5)] font-headline">
+        KINETIC VOID
+      </div>
+<nav class="hidden md:flex gap-8">
+<a class="text-[#00f2fe] border-b-2 border-[#00f2fe] pb-1 shadow-[0_4px_12px_-2px_rgba(0,242,254,0.3)] font-label label-sm uppercase tracking-widest" href="#">Nodes</a>
+<a class="text-slate-500 hover:text-[#e0fdff] transition-colors font-label label-sm uppercase tracking-widest" href="#">Lattice</a>
+<a class="text-slate-500 hover:text-[#e0fdff] transition-colors font-label label-sm uppercase tracking-widest" href="#">Terminal</a>
+<a class="text-slate-500 hover:text-[#e0fdff] transition-colors font-label label-sm uppercase tracking-widest" href="#">Intelligence</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden lg:block group">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 material-symbols-outlined">search</span>
+<input class="bg-surface-container-high border-none border-b-2 border-outline focus:border-primary-container focus:ring-0 text-xs tracking-widest font-label py-2 pl-10 pr-4 w-64 transition-all" placeholder="QUERY NEURAL MESH..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-slate-500 hover:text-primary-container transition-all hover:bg-[#2a2a2a]/50 p-2 rounded-full">
+<span class="material-symbols-outlined">account_tree</span>
+</button>
+<button class="text-slate-500 hover:text-primary-container transition-all hover:bg-[#2a2a2a]/50 p-2 rounded-full">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+<div class="w-10 h-10 rounded-full border border-primary-container/30 p-0.5 overflow-hidden">
+<img alt="User Neural Profile" class="w-full h-full object-cover" data-alt="Abstract minimalist 3D avatar of a futuristic system administrator with glowing neon circuitry patterns on skin" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAg7XvmfiN78QBY4Nu35NM9LHuhXo52afzwpvb--4v-wURNnMMHpaci7C2Ra5zzPmV8picVIGztzQHbZ8IzNRJrRIJdRIkC_jpROJhQyI4GofL_0trZgvPpy1jTx8t8BTivAHn0e6E0exF-rWB6E8Ut8CC8H-pe428VeT1ORIw8b7rNNzfIMAA5QGqEXis-pJbK8bovOJMSHS5_NTMLFH9yND-uxSW6R1AS6luBMCl34nN8Q97oM7cNVnav4C1RqE8HEPUkFywTtg"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Shared Component: SideNavBar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col py-8 z-40 bg-[#131313] w-64 pt-24 hidden md:flex">
+<div class="px-8 mb-10">
+<h2 class="font-headline font-bold text-[#00f2fe] text-xs uppercase tracking-widest">Neural Lattice</h2>
+<p class="text-[10px] text-slate-600 font-label tracking-widest">v2.0.4-stable</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-slate-600 px-6 py-4 flex items-center gap-4 hover:bg-[#1c1b1b] hover:text-[#00f2fe] transition-all group" href="#">
+<span class="material-symbols-outlined text-lg">cloud_done</span>
+<span class="font-label uppercase tracking-widest text-[10px]">Cloud Native</span>
+</a>
+<a class="text-[#41e48b] bg-[#2a2a2a] border-r-4 border-[#41e48b] px-6 py-4 flex items-center gap-4 transition-all group" href="#">
+<span class="material-symbols-outlined text-lg">security</span>
+<span class="font-label uppercase tracking-widest text-[10px]">Cybersecurity</span>
+</a>
+<a class="text-slate-600 px-6 py-4 flex items-center gap-4 hover:bg-[#1c1b1b] hover:text-[#00f2fe] transition-all group" href="#">
+<span class="material-symbols-outlined text-lg">sync_alt</span>
+<span class="font-label uppercase tracking-widest text-[10px]">DevOps</span>
+</a>
+<a class="text-slate-600 px-6 py-4 flex items-center gap-4 hover:bg-[#1c1b1b] hover:text-[#00f2fe] transition-all group" href="#">
+<span class="material-symbols-outlined text-lg">psychology</span>
+<span class="font-label uppercase tracking-widest text-[10px]">AI/ML</span>
+</a>
+<a class="text-slate-600 px-6 py-4 flex items-center gap-4 hover:bg-[#1c1b1b] hover:text-[#00f2fe] transition-all group" href="#">
+<span class="material-symbols-outlined text-lg">terminal</span>
+<span class="font-label uppercase tracking-widest text-[10px]">System Kernels</span>
+</a>
+</nav>
+<div class="px-6 mb-8">
+<button class="w-full bg-gradient-to-br from-primary-container to-[#006a70] text-on-primary-container font-label font-bold py-3 text-[10px] tracking-widest uppercase rounded-lg hover:shadow-[0_0_20px_rgba(0,242,254,0.4)] transition-all">
+        DEPLOY NODE
+      </button>
+</div>
+<div class="border-t border-white/5 pt-4">
+<a class="text-slate-600 px-6 py-3 flex items-center gap-4 hover:text-[#00f2fe] transition-all" href="#">
+<span class="material-symbols-outlined text-sm">settings_input_component</span>
+<span class="font-label uppercase tracking-widest text-[10px]">Settings</span>
+</a>
+<a class="text-slate-600 px-6 py-3 flex items-center gap-4 hover:text-[#00f2fe] transition-all" href="#">
+<span class="material-symbols-outlined text-sm">menu_book</span>
+<span class="font-label uppercase tracking-widest text-[10px]">Documentation</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="relative w-full h-screen pl-0 md:pl-64 pt-20 mesh-grid overflow-hidden">
+<!-- Floating Background Elements -->
+<div class="absolute top-1/4 left-1/4 hologram-text text-[#00f2fe]/40 text-xs opacity-50 select-none">
+      [ DOMINA LA NUBE ]
+    </div>
+<div class="absolute bottom-1/3 right-1/4 hologram-text text-[#41e48b]/40 text-xs opacity-50 select-none">
+      [ APRENDE PYTHON ]
+    </div>
+<div class="absolute top-2/3 left-1/3 hologram-text text-[#00f2fe]/40 text-xs opacity-50 select-none">
+      [ BLINDA TU CÓDIGO ]
+    </div>
+<div class="absolute top-1/2 right-1/3 hologram-text text-[#41e48b]/40 text-xs opacity-50 select-none">
+      [ ESCALA CON K8S ]
+    </div>
+<!-- Neural Mesh Canvas Simulation -->
+<div class="relative w-full h-full flex items-center justify-center p-12">
+<!-- SVG Connectors Layer -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none opacity-40">
+<defs>
+<lineargradient id="cyan-green" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#00f2fe; stop-opacity:0"></stop>
+<stop offset="50%" style="stop-color:#41e48b; stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#00f2fe; stop-opacity:0"></stop>
+</lineargradient>
+</defs>
+<!-- Simulation of connections -->
+<path class="connection-line" d="M 400 300 Q 550 450 700 350" fill="none" stroke="url(#cyan-green)" stroke-width="2"></path>
+<path class="connection-line" d="M 700 350 Q 850 200 1000 400" fill="none" stroke="url(#cyan-green)" stroke-width="2"></path>
+<path class="connection-line" d="M 1000 400 Q 1150 550 1300 450" fill="none" stroke="url(#cyan-green)" stroke-width="2"></path>
+<path class="connection-line" d="M 400 300 Q 250 150 100 250" fill="none" stroke="url(#cyan-green)" stroke-width="2"></path>
+</svg>
+<!-- Glass Nodes Grid -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-8 relative z-10 max-w-6xl w-full">
+<!-- Node: AWS -->
+<div class="glass-node group cursor-pointer p-6 rounded-full border border-primary-container/20 hover:border-primary-container/60 transition-all duration-500 hover:-translate-y-2 flex flex-col items-center justify-center text-center aspect-square">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-4 group-hover:shadow-[0_0_20px_rgba(0,242,254,0.3)] transition-all">
+<span class="material-symbols-outlined text-primary-container">cloud</span>
+</div>
+<h3 class="font-headline font-black text-sm tracking-tighter text-on-surface">AWS</h3>
+<div class="w-1 h-1 bg-secondary rounded-full mt-2 animate-pulse"></div>
+<span class="mt-2 font-label text-[9px] text-slate-500 uppercase tracking-[0.2em]">Deployment Ready</span>
+</div>
+<!-- Node: Cybersecurity -->
+<div class="glass-node group cursor-pointer p-6 rounded-full border border-secondary/20 hover:border-secondary/60 transition-all duration-500 translate-y-8 flex flex-col items-center justify-center text-center aspect-square">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-4 group-hover:shadow-[0_0_20px_rgba(65,228,139,0.3)] transition-all">
+<span class="material-symbols-outlined text-secondary">security</span>
+</div>
+<h3 class="font-headline font-black text-sm tracking-tighter text-on-surface">Cybersecurity</h3>
+<div class="w-1 h-1 bg-primary-container rounded-full mt-2"></div>
+<span class="mt-2 font-label text-[9px] text-slate-500 uppercase tracking-[0.2em]">Encrypted Node</span>
+</div>
+<!-- Node: Python -->
+<div class="glass-node group cursor-pointer p-6 rounded-full border border-primary-container/20 hover:border-primary-container/60 transition-all duration-500 flex flex-col items-center justify-center text-center aspect-square">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-4 group-hover:shadow-[0_0_20px_rgba(0,242,254,0.3)] transition-all">
+<span class="material-symbols-outlined text-primary-container">code</span>
+</div>
+<h3 class="font-headline font-black text-sm tracking-tighter text-on-surface">Python</h3>
+<div class="w-1 h-1 bg-secondary rounded-full mt-2 animate-pulse"></div>
+<span class="mt-2 font-label text-[9px] text-slate-500 uppercase tracking-[0.2em]">Neural Core</span>
+</div>
+<!-- Node: Terraform -->
+<div class="glass-node group cursor-pointer p-6 rounded-full border border-secondary/20 hover:border-secondary/60 transition-all duration-500 -translate-y-4 flex flex-col items-center justify-center text-center aspect-square">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-4 group-hover:shadow-[0_0_20px_rgba(65,228,139,0.3)] transition-all">
+<span class="material-symbols-outlined text-secondary">architecture</span>
+</div>
+<h3 class="font-headline font-black text-sm tracking-tighter text-on-surface">Terraform</h3>
+<div class="w-1 h-1 bg-primary-container rounded-full mt-2"></div>
+<span class="mt-2 font-label text-[9px] text-slate-500 uppercase tracking-[0.2em]">IaC Protocol</span>
+</div>
+<!-- Node: React -->
+<div class="glass-node group cursor-pointer p-6 rounded-full border border-primary-container/20 hover:border-primary-container/60 transition-all duration-500 translate-y-12 flex flex-col items-center justify-center text-center aspect-square">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-4 group-hover:shadow-[0_0_20px_rgba(0,242,254,0.3)] transition-all">
+<span class="material-symbols-outlined text-primary-container">view_quilt</span>
+</div>
+<h3 class="font-headline font-black text-sm tracking-tighter text-on-surface">React</h3>
+<div class="w-1 h-1 bg-secondary rounded-full mt-2 animate-pulse"></div>
+<span class="mt-2 font-label text-[9px] text-slate-500 uppercase tracking-[0.2em]">Interface Synthesis</span>
+</div>
+<!-- Node: Kubernetes -->
+<div class="glass-node group cursor-pointer p-6 rounded-full border border-secondary/20 hover:border-secondary/60 transition-all duration-500 flex flex-col items-center justify-center text-center aspect-square">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-4 group-hover:shadow-[0_0_20px_rgba(65,228,139,0.3)] transition-all">
+<span class="material-symbols-outlined text-secondary">hub</span>
+</div>
+<h3 class="font-headline font-black text-sm tracking-tighter text-on-surface">Kubernetes</h3>
+<div class="w-1 h-1 bg-primary-container rounded-full mt-2"></div>
+<span class="mt-2 font-label text-[9px] text-slate-500 uppercase tracking-[0.2em]">Orchestration</span>
+</div>
+<!-- Node: AI/ML -->
+<div class="glass-node group cursor-pointer p-6 rounded-full border border-primary-container/20 hover:border-primary-container/60 transition-all duration-500 translate-y-4 flex flex-col items-center justify-center text-center aspect-square">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-4 group-hover:shadow-[0_0_20px_rgba(0,242,254,0.3)] transition-all">
+<span class="material-symbols-outlined text-primary-container">psychology</span>
+</div>
+<h3 class="font-headline font-black text-sm tracking-tighter text-on-surface">AI/ML</h3>
+<div class="w-1 h-1 bg-secondary rounded-full mt-2 animate-pulse"></div>
+<span class="mt-2 font-label text-[9px] text-slate-500 uppercase tracking-[0.2em]">Neural Weights</span>
+</div>
+<!-- Node: Docker -->
+<div class="glass-node group cursor-pointer p-6 rounded-full border border-secondary/20 hover:border-secondary/60 transition-all duration-500 -translate-y-12 flex flex-col items-center justify-center text-center aspect-square">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-4 group-hover:shadow-[0_0_20px_rgba(65,228,139,0.3)] transition-all">
+<span class="material-symbols-outlined text-secondary">box</span>
+</div>
+<h3 class="font-headline font-black text-sm tracking-tighter text-on-surface">Docker</h3>
+<div class="w-1 h-1 bg-primary-container rounded-full mt-2"></div>
+<span class="mt-2 font-label text-[9px] text-slate-500 uppercase tracking-[0.2em]">Containment</span>
+</div>
+</div>
+</div>
+<!-- Active Status Overlay -->
+<div class="absolute bottom-10 left-10 md:left-72 bg-surface-container-low/80 backdrop-blur-md p-4 border-l-2 border-secondary rounded-r-xl z-20">
+<div class="flex items-center gap-3">
+<span class="flex h-2 w-2 rounded-full bg-secondary animate-ping"></span>
+<span class="font-label text-[10px] uppercase tracking-widest text-secondary">SYSTEM ACTIVE</span>
+</div>
+<p class="font-label text-[9px] text-slate-400 mt-1 uppercase tracking-tighter">Latency: 14ms | Uptime: 99.99% | Connection: Secured</p>
+</div>
+<!-- Right Side Dynamic Feed -->
+<div class="absolute right-8 top-32 w-64 hidden xl:block z-20">
+<div class="bg-surface-container-low/40 backdrop-blur-md rounded-xl p-6 border border-white/5">
+<h4 class="font-headline font-bold text-xs uppercase tracking-[0.2em] text-primary-container mb-6">Recent Pulses</h4>
+<ul class="space-y-6">
+<li class="relative pl-6">
+<div class="absolute left-0 top-1 w-2 h-2 rounded-full bg-secondary"></div>
+<p class="text-[10px] text-on-surface font-label leading-relaxed">AWS Node expansion initialized by Admin_01</p>
+<span class="text-[8px] text-slate-600 font-label">2 MINS AGO</span>
+</li>
+<li class="relative pl-6">
+<div class="absolute left-0 top-1 w-2 h-2 rounded-full bg-primary-container"></div>
+<p class="text-[10px] text-on-surface font-label leading-relaxed">New K8S Cluster synchronization successful</p>
+<span class="text-[8px] text-slate-600 font-label">15 MINS AGO</span>
+</li>
+<li class="relative pl-6">
+<div class="absolute left-0 top-1 w-2 h-2 rounded-full bg-secondary"></div>
+<p class="text-[10px] text-on-surface font-label leading-relaxed">Security protocol 'VOID-7' deployed across Lattice</p>
+<span class="text-[8px] text-slate-600 font-label">1 HOUR AGO</span>
+</li>
+</ul>
+</div>
+</div>
+</main>
+<!-- Navigation Suppression Logic: Standard Shell is present because this is a top-level exploration destination. -->
+</body></html>

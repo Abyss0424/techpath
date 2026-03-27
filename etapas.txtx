@@ -1,0 +1,46 @@
+Necesito específicamente:
+
+1. La función que maneja DESBLOQUEAR_ETAPA — cómo cambia de chat/etapa:
+
+```javascript
+    // BLOQUE DESBLOQUEAR_ETAPA (parseAIResponse)
+    if (cleanText.includes("DESBLOQUEAR_ETAPA:")) {
+      const nextId = newActiveId + 1;
+      // Mark current stage as completed
+      if (newStages[newActiveId]) newStages[newActiveId].status = "completed";
+      // Create stage dynamically if it doesn't exist
+      if (!newStages[nextId]) {
+        const unlockMatch = cleanText.match(/DESBLOQUEAR_ETAPA:\s*\[?([^\]\n]*)\]?/);
+        const stageName = unlockMatch ? unlockMatch[1].trim() : `Etapa ${nextId + 1}`;
+        newStages.push({ id: nextId, name: stageName, status: "current", tandas: [] });
+      } else {
+        newStages[nextId].status = "current";
+      }
+      newActiveId = nextId;
+      stageChanged = true;
+      cleanText = cleanText.replace(/DESBLOQUEAR_ETAPA:[^\n]*/, "");
+    }
+```
+
+2. Cómo se inicializa el mensaje de bienvenida al entrar a una nueva etapa:
+
+```javascript
+  const selectStage = async (newStageId) => {
+    setActiveStageId(newStageId);
+    const stageHasMessages = messages.some(m => m.stageId === newStageId);
+    if (!stageHasMessages && newStageId > 0) {
+      setLoading(true);
+      const hiddenPrompt = `[SISTEMA]: El usuario entra a la Etapa ${newStageId + 1}. Saluda, resume y lanza NUEVA_TANDA.`;
+      const tempMessages = [...messages, { role: "user", content: hiddenPrompt, stageId: newStageId, isHidden: true }];
+      setMessages(tempMessages); scrollBottom();
+      try {
+        const res = await geminiCall(tempMessages.map(m => ({ role: m.role, content: m.content })), getSystemPrompt(goalText));
+        const { cleanText, displayText, newStages, newActiveId } = parseAIResponse(res, stages, newStageId, goalText, mentorName);
+        const updatedMessages = [...tempMessages, { role: "assistant", content: displayText, stageId: newActiveId }];
+        setMessages(updatedMessages); setStages(newStages); setActiveStageId(newActiveId);
+        setSavedChats(prev => prev.map(c => c.id === currentChatId ? { ...c, messages: updatedMessages, stages: newStages, activeStageId: newActiveId } : c));
+      } catch (e) { setError(e.message); }
+      finally { setLoading(false); scrollBottom(); }
+    }
+  };
+```

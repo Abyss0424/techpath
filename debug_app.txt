@@ -1,0 +1,15 @@
+﻿              </div>
+            </div>
+          </footer>
+        </main>
+      </div>
+    );
+
+    // 3. ONBOARDING WIZARD (Terminal Style)
+    if (screen === "wizard") return (
+      <div style={{ ...sContainer, justifyContent: "center", alignItems: "center", position: 'relative' }}>
+        {/* Animated backdrop mask entirely decoupled from background */}
+        <div style={{ position: 'absolute', inset: 0, backdropFilter: 'blur(20px) saturate(180%)', background: 'rgba(4,8,15,0.7)', zIndex: 0 }} />
+        
+        <div className="reveal" ref={useRevealObserver()} style={{ 
+          ...sGlass, maxWidth: "650px", width: isMobile ? '92%' : '100%', padding: "0", 
